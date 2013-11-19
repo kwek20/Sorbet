@@ -63,7 +63,7 @@ dist/Debug/GNU-Linux-x86/pfcclient: ${OBJECTFILES}
 ${OBJECTDIR}/pfcclient.o: pfcclient.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
-	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/pfcclient.o pfcclient.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o ${OBJECTDIR}/pfcclient.o pfcclient.c
 
 # Subprojects
 .build-subprojects:

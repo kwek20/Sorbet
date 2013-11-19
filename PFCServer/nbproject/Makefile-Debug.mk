@@ -63,7 +63,7 @@ dist/Debug/GNU-Linux-x86/pfcserver: ${OBJECTFILES}
 ${OBJECTDIR}/pfcserver.o: pfcserver.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} $@.d
-	$(COMPILE.c) -g -MMD -MP -MF $@.d -o ${OBJECTDIR}/pfcserver.o pfcserver.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o ${OBJECTDIR}/pfcserver.o pfcserver.c
 
 # Subprojects
 .build-subprojects:
