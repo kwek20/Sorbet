@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
     setupSIG();
 
-    struct sockaddr_in server_addr, client_addr;
+    struct sockaddr_in server_addr;
 
     //clear data
     memset(&server_addr, '0' , sizeof(server_addr));
@@ -82,8 +82,6 @@ int main(int argc, char** argv) {
 }
 
 void create(int *sock){
-    printf("client on sock %i ready! \n", *sock);
-
     int modus, fd, rec;
     struct sockaddr_in client_addr;
 
@@ -111,17 +109,34 @@ void create(int *sock){
         } else {
             //good
             if (modus == 0){
-                char **array;
+                char **array = malloc(1);
                 int values = 0;
-                //values = transform(buffer, array);
+                values = transform(buffer, array);
 
                 if (values < 1){
                     //?? empty, shouldnt have happened
-                } else{
+                } else {
                     modus = atoi(array[0]);
-                    printf("%i\n", modus);
+                    printf("Selected modus: %i\n", modus);
+                    sendPacket(fd, 100);
                 }
                 //modus = atoi();
+            } else {
+                //hes in a modus? whatchu got for me
+                if (rec < 50){
+                    //want to stop?
+                    char *eind;
+                    strcat(eind, "101");
+                    strcat(eind,  ":EOF");
+                    if (strcmp(buffer, eind) == 0){
+                        //stop data
+                        modus = 0;
+                        continue;
+                    }
+                }
+                //MOAR data
+                //save it all
+                printf("received data: %s\n", recv);
             }
         }
     }
@@ -150,11 +165,11 @@ int sendPacket(int sock, int packet, ...){
     va_list ap;
     int i;
     char *info;
-    info = &packet;
+    info = (char *)packet;
 
     va_start(ap, packet);
     for (i=packet; i>=0; i=va_arg(ap, int)){
-        strcat(info, &i);
+        strcat(info, (char *) i);
         printf("%s\n", info);
     }
     va_end(ap);
