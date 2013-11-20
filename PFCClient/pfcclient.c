@@ -126,7 +126,7 @@ int FileNaarServer(){
             return -1;
         }
         
-        strcpy(buffer,"101");
+        strcpy(buffer,"101:EOF");
     
         if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
             perror("Send 101 error:");
