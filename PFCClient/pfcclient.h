@@ -18,7 +18,9 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #define BUFFERGROOTE 4092
+#define NETWERKPOORT 2200
 
 int pfcClient(char** argv);
