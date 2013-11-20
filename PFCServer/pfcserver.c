@@ -22,7 +22,7 @@
 void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
-char** transform(char *text);
+int transform(char *text, char** to);
 void sendPacket(int sock, int pID);
 
 int cur_cli = 0;
@@ -83,10 +83,6 @@ int main(int argc, char** argv) {
 void create(int *sock){
     printf("client on sock %i ready! \n", *sock);
 
-    char *text;
-    text = "This:is:a:test";
-    transform(text);
-
     int modus, fd, rec;
     struct sockaddr_in client_addr;
 
@@ -114,8 +110,16 @@ void create(int *sock){
         } else {
             //good
             if (modus == 0){
-                char **values;
-                
+                char **array;
+                int values;
+                values = transform(buffer, array);
+
+                if (values < 1){
+                    //?? empty, shouldnt have happened
+                } else{
+                    modus = atoi(array[0]);
+                    printf("%i\n", modus);
+                }
                 //modus = atoi();
             }
         }
@@ -124,29 +128,21 @@ void create(int *sock){
     cur_cli--;
 }
 
-char** transform(char *text){
+int transform(char *text, char** to){
     char *options[10];
     char *temp;
 
     temp = strtok(text, ":");
-    printf("%s -> %s\n", temp, text);
-    int colon = 0, i;
+    int colon = 0;
 
-    puts("1");
-    while (temp != NULL){
+    while (temp != NULL || temp != '\0'){
         options[colon] = temp;
-        temp = strtok(text, ":");
+        temp = strtok(NULL, ":");
         colon++;
     }
-    puts("6");
-    //options = realloc(options, sizeof(char *)* colon+1);
     options[colon] = 0;
-
-    for (i=0; i<colon+1; ++i){
-        printf("options[%d] = %s\n",i, options[i]);
-    }
-
-    return options;
+    to = options;
+    return colon-1;
 }
 
 void sendPacket(int sock, int pID){
