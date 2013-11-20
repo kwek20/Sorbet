@@ -40,7 +40,7 @@ int pfcClient(char** argv){
    
 }
 /*
- * Functie serv_addr vullen  
+ * Functie serv_addr vullen
  */
 
 int ServerGegevens(char* ip, struct sockaddr_in *serv_addr){
