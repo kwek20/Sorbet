@@ -34,8 +34,18 @@ int pfcClient(char** argv){
    struct sockaddr_in serv_addr;
    char buffer[BUFFERGROOTE];
 
+   if((int ServerGegevens(argv[2], &serv_addr)) < 0){
+       exit();
+   }
+   
+}
+/*
+ * Functie serv_addr vullen
+ */
 
-   //memsets
+int ServerGegevens(char* ip, struct sockaddr_in *serv_addr){
+
+    //memsets
    memset(&serv_addr, '\0', sizeof (serv_addr));
 
 
@@ -44,17 +54,15 @@ int pfcClient(char** argv){
     */
    serv_addr.sin_family = AF_INET;
 
-   if (inet_pton(AF_INET, argv[2], &serv_addr.sin_addr) <= 0) {
+   if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
         perror("inet_pton error occured:");
-        exit(2);
+        return(-1);
    }
 
    serv_addr.sin_port = 2200;
 
+   return 0;
 }
-/*
- * Functie argv omzetten naar ip
- */
 
 /*
  * Functie controleerd of bestand bestaat
