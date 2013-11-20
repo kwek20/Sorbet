@@ -119,6 +119,9 @@ void create(int *sock){
                     modus = atoi(array[0]);
                     printf("Selected modus: %i\n", modus);
                     sendPacket(fd, 100);
+                    if (modus = 200){
+                        
+                    }
                 }
                 //modus = atoi();
             } else {
