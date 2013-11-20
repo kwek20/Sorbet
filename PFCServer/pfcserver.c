@@ -7,16 +7,25 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <memory.h>
 #include <signal.h>
+#include <pthread.h>
+#include <unistd.h>
+
 
 #define PORT 2200
 #define MAX_CLI 10
 
 void SIGexit(int sig);
 void setupSIG();
+void create(int *sock);
+char** transform(char *text);
+void sendPacket(int sock, int pID);
+
+int cur_cli = 0;
 
 /*
  * 
@@ -39,7 +48,7 @@ int main(int argc, char** argv) {
     server_addr.sin_port = htons(poort);
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    int sock, size, cur_cli;
+    int sock = 0;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket");
         return -1;
@@ -59,10 +68,89 @@ int main(int argc, char** argv) {
     
     printf("Private file cloud server ready!\nWere listening for clients on port \"%i\".\n", PORT);
     for ( ;; ){
-        
+        if(cur_cli < MAX_CLI){
+            cur_cli++;
+            printf("Created client %i\n", cur_cli);
+            pthread_t client;
+            pthread_create(&client, NULL, (void*)create, &sock);
+            pthread_detach(client);
+        }
     }
 
     return (EXIT_SUCCESS);
+}
+
+void create(int *sock){
+    printf("client on sock %i ready! \n", *sock);
+
+    char *text;
+    text = "This:is:a:test";
+    transform(text);
+
+    int modus, fd, rec;
+    struct sockaddr_in client_addr;
+
+    char buffer[BUFSIZ];
+    socklen_t size = sizeof(client_addr);
+    if ((fd = accept(*sock, (struct sockaddr *)&client_addr, &size)) < 0){
+         perror("accept");
+    }
+
+    char *ip;
+    ip = inet_ntoa(client_addr.sin_addr);
+    int poort = htons(client_addr.sin_port);
+
+    printf("-------------\nConnection accepted with client: %i\n", fd);
+    printf("Ip nummer: %s\n", ip);
+    printf("Port: %i\n", poort);
+    printf("Ready to receive!\n");
+
+    for ( ;; ){
+        if ((rec = recv(fd, buffer, sizeof(buffer),0)) < 0){
+            perror("recv");
+            printf("Client error! Stopping... \n");
+        } else if (rec == 0){
+            //connection closed
+        } else {
+            //good
+            if (modus == 0){
+                char **values;
+                
+                //modus = atoi();
+            }
+        }
+    }
+
+    cur_cli--;
+}
+
+char** transform(char *text){
+    char *options[10];
+    char *temp;
+
+    temp = strtok(text, ":");
+    printf("%s -> %s\n", temp, text);
+    int colon = 0, i;
+
+    puts("1");
+    while (temp != NULL){
+        options[colon] = temp;
+        temp = strtok(text, ":");
+        colon++;
+    }
+    puts("6");
+    //options = realloc(options, sizeof(char *)* colon+1);
+    options[colon] = 0;
+
+    for (i=0; i<colon+1; ++i){
+        printf("options[%d] = %s\n",i, options[i]);
+    }
+
+    return options;
+}
+
+void sendPacket(int sock, int pID){
+
 }
 
 void setupSIG(){
@@ -73,4 +161,3 @@ void setupSIG(){
 void SIGexit(int sig){
 
 }
-

@@ -39,6 +39,7 @@
       </toolsSet>
       <compileType>
         <cTool>
+          <commandLine>-lpthread</commandLine>
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>
