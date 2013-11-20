@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 
 #define PORT 2200
@@ -23,7 +24,7 @@ void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
 int transform(char *text, char** to);
-void sendPacket(int sock, int pID);
+int sendPacket(int sock, int packet, ...);
 
 int cur_cli = 0;
 
@@ -111,8 +112,8 @@ void create(int *sock){
             //good
             if (modus == 0){
                 char **array;
-                int values;
-                values = transform(buffer, array);
+                int values = 0;
+                //values = transform(buffer, array);
 
                 if (values < 1){
                     //?? empty, shouldnt have happened
@@ -145,8 +146,20 @@ int transform(char *text, char** to){
     return colon-1;
 }
 
-void sendPacket(int sock, int pID){
+int sendPacket(int sock, int packet, ...){
+    va_list ap;
+    int i;
+    char *info;
+    info = &packet;
 
+    va_start(ap, packet);
+    for (i=packet; i>=0; i=va_arg(ap, int)){
+        strcat(info, &i);
+        printf("%s\n", info);
+    }
+    va_end(ap);
+    
+    return 1;
 }
 
 void setupSIG(){

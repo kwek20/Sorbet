@@ -94,7 +94,6 @@ int ConnectNaarServer(struct sockaddr_in *serv_addr){
         perror("Connect error:");
         return -1;
     }
-
     return 0;
 }
 
