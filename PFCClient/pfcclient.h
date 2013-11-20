@@ -20,7 +20,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define BUFFERGROOTE 4092
+#define BUFFERGROOTE 4096
 #define NETWERKPOORT 2200
 
 int pfcClient(char** argv);
+int ServerGegevens(char* ip, struct sockaddr_in serv_addr);
+int BestaatDeFile(char* fileName);
+int ConnectNaarServer(struct sockaddr_in *serv_addr);
