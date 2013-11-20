@@ -2,9 +2,6 @@
  * File:   pfcclient.c
  * Author: Bartjan Zondag & Kevin Rosendaal
  *
- * Created on November 19, 2013, 10:37 AM
- * Changed on November 19, 2013, 12:36 AM
- * Changed on November 19, 2013, 12:40 AM
  */
 
 /*
@@ -12,6 +9,8 @@
  */
 
 #include "pfcclient.h"
+
+int sockfd;
 
 int main(int argc, char** argv) {
 
@@ -32,11 +31,9 @@ int main(int argc, char** argv) {
 int pfcClient(char** argv){
 
    struct sockaddr_in serv_addr;
-   char buffer[BUFFERGROOTE];
-   int sockfd;
 
-   if((int ServerGegevens(argv[2], &serv_addr)) < 0){
-       exit();
+   if((ServerGegevens(argv[2], serv_addr)) < 0){
+       exit(1);
    }
    
    // Create socket
@@ -52,7 +49,7 @@ int pfcClient(char** argv){
  * Functie serv_addr vullen
  */
 
-int ServerGegevens(char* ip, struct sockaddr_in *serv_addr){
+int ServerGegevens(char* ip, struct sockaddr_in serv_addr){
 
     //memsets
    memset(&serv_addr, '\0', sizeof (serv_addr));
@@ -69,7 +66,6 @@ int ServerGegevens(char* ip, struct sockaddr_in *serv_addr){
         return(-1);
    }
    
-   serv_addr.sin_addr.s_addr = inet_addr(ip);
    serv_addr.sin_port = NETWERKPOORT;
 
    return 0;
@@ -78,7 +74,7 @@ int ServerGegevens(char* ip, struct sockaddr_in *serv_addr){
 /*
  * Functie controleerd of bestand bestaat
  */
-int BestaatDeFile(char** fileName){
+int BestaatDeFile(char* fileName){
     if(access(fileName, F_OK) < 0) {
         // Bestand bestaat niet op schijf van client
         return -1;
@@ -92,16 +88,57 @@ int BestaatDeFile(char** fileName){
  * Functie maak verbinding met de server
  */
 
-int ConnectNaarServer(int sockfd, struct sockaddr_in *serv_addr){
+int ConnectNaarServer(struct sockaddr_in *serv_addr){
     
     if(connect(sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
         perror("Connect error:");
         return -1;
     }
-    
+
     return 0;
 }
 
 /*
  * Functie geef aan dat je een bestand wilt uploaden
  */
+
+int FileNaarServer(){
+    
+    char buffer[BUFFERGROOTE];
+    
+    buffer = "300:derp.txt";
+    
+    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Send metadata error:");
+        return -1;
+    }
+    
+    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive metadata OK error:");
+        return -1;
+    }
+    
+    if(!strcmp(buffer, "100")){
+        
+        buffer = "Dit moet een bestand voorstellen";
+        
+        if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+            perror("Send file error:");
+            return -1;
+        }
+        
+        buffer = "101";
+    
+        if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+            perror("Send 101 error:");
+            return -1;
+        }
+        
+        if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+            perror("Receive OK error:");
+            return -1;
+        }
+        
+        close(sockfd);
+    }
+}
