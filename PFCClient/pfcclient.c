@@ -106,7 +106,7 @@ int FileNaarServer(){
     
     char buffer[BUFFERGROOTE];
     
-    buffer = "300:derp.txt";
+    strcpy(buffer,"300:derp.txt");
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -120,14 +120,14 @@ int FileNaarServer(){
     
     if(!strcmp(buffer, "100")){
         
-        buffer = "Dit moet een bestand voorstellen";
+        strcpy(buffer,"Dit moet een bestand voorstellen");
         
         if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
             perror("Send file error:");
             return -1;
         }
         
-        buffer = "101";
+        strcpy(buffer,"101");
     
         if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
             perror("Send 101 error:");
@@ -141,4 +141,6 @@ int FileNaarServer(){
         
         close(sockfd);
     }
+    
+    return 0;
 }
