@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     argc = 3;
-    argv[1] = "/tmp/test.txt";
+    argv[1] = "test.txt";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     pfcClient(argv);
@@ -31,7 +31,15 @@ int main(int argc, char** argv) {
 
 int pfcClient(char** argv){
 
-   
+   //Check if file exists
+   /*
+    if((BestaatDeFile(argv[1])) < 0){
+       printf("Geef een geldige file op\n");
+       exit(1);
+   }   
+   */
+   //open file
+
 
    if((ServerGegevens(argv[2])) < 0){
        exit(1);
@@ -40,7 +48,7 @@ int pfcClient(char** argv){
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
        perror("Create socket error:");
-       return -1;
+       exit(1);
    }
 
    ConnectNaarServer();
@@ -114,7 +122,7 @@ int FileNaarServer(){
     
     char buffer[BUFFERGROOTE];
     
-    strcpy(buffer,"300:derp.txt");
+    strcpy(buffer,"300:derp.txt"); //derp.txt wordt argv[1]
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -128,33 +136,41 @@ int FileNaarServer(){
 
     printf("%s\n", buffer);
 
-    if(strcmp(buffer, "100") == 0){
+    if(strcmp(buffer, "100") != 0){return -1;}
         
-        printf("Meta data succesvol verstuurd en ok ontvangen\n");
+    printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
-        strcpy(buffer,"Dit moet een bestand voorstellen");
-        
-        if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
-            perror("Send file error:");
-            return -1;
-        }
-        
-        strcpy(buffer,"101:EOF");
-    
-        if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
-            perror("Send 101 error:");
-            return -1;
-        }
-        
-        if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
-            perror("Receive OK error:");
-            return -1;
-        }
+    strcpy(buffer,"Dit moet een bestand voorstellen");
 
-        printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
-
-        close(sockfd);
+    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Send file error:");
+        return -1;
     }
+
+    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    perror("Receive metadata OK error:");
+    return -1;
+    }
+
+    printf("%s\n", buffer);
+
+    if(strcmp(buffer, "100") != 0){return -1;}
+
+    strcpy(buffer,"101:EOF");
+
+    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Send 101 error:");
+        return -1;
+    }
+
+    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive OK error:");
+        return -1;
+    }
+
+    printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
+
+    close(sockfd);
     
     return 0;
 }
