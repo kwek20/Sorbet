@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     argc = 3;
     argv[1] = "/tmp/test.txt";
-    argv[2] = "192.168.1.1"; //moet nog veranderd worden
+    argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     pfcClient(argv);
     
@@ -44,7 +44,7 @@ int pfcClient(char** argv){
    }
 
    ConnectNaarServer();
-   //FileNaarServer();
+   FileNaarServer();
    
    return 0;
 }
@@ -73,7 +73,7 @@ int ServerGegevens(char* ip){
         return(-1);
    }
    
-   serv_addr.sin_port = NETWERKPOORT;
+   serv_addr.sin_port = htons(NETWERKPOORT);
 
    return 0;
 }
@@ -101,6 +101,8 @@ int ConnectNaarServer(){
         perror("Connect error:");
         return -1;
     }
+
+    printf("connectie succesvol\n");
     return 0;
 }
 
@@ -123,9 +125,12 @@ int FileNaarServer(){
         perror("Receive metadata OK error:");
         return -1;
     }
-    
+
+
     if(!strcmp(buffer, "100")){
         
+        printf("Meta data succesvol verstuurd en ok ontvangen\n");
+
         strcpy(buffer,"Dit moet een bestand voorstellen");
         
         if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
@@ -144,7 +149,9 @@ int FileNaarServer(){
             perror("Receive OK error:");
             return -1;
         }
-        
+
+        printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
+
         close(sockfd);
     }
     

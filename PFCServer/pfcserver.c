@@ -139,7 +139,7 @@ void create(int *sock){
                 }
                 //MOAR data
                 //save it all
-                printf("received data: %s\n", recv);
+                //printf("received data: %s\n", recv);
             }
         }
     }
