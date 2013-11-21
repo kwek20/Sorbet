@@ -11,6 +11,7 @@
 #include "pfcclient.h"
 
 int sockfd;
+struct sockaddr_in serv_addr;
 
 int main(int argc, char** argv) {
 
@@ -30,9 +31,9 @@ int main(int argc, char** argv) {
 
 int pfcClient(char** argv){
 
-   struct sockaddr_in serv_addr;
+   
 
-   if((ServerGegevens(argv[2], serv_addr)) < 0){
+   if((ServerGegevens(argv[2])) < 0){
        exit(1);
    }
    
@@ -41,6 +42,9 @@ int pfcClient(char** argv){
        perror("Create socket error:");
        return -1;
    }
+
+   ConnectNaarServer();
+   //FileNaarServer();
    
    return 0;
 }
@@ -49,7 +53,7 @@ int pfcClient(char** argv){
  * Functie serv_addr vullen
  */
 
-int ServerGegevens(char* ip, struct sockaddr_in serv_addr){
+int ServerGegevens(char* ip){
 
     //memsets
    memset(&serv_addr, '\0', sizeof (serv_addr));
@@ -60,7 +64,10 @@ int ServerGegevens(char* ip, struct sockaddr_in serv_addr){
     */
    serv_addr.sin_family = AF_INET;
 
-   // Wat doet dit?
+   /*
+    * This function converts the character string ip into a network address using the structure of AF_INET
+    * and copies it to serv_addr.sin_addr
+    */
    if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0) {
         perror("inet_pton error occured:");
         return(-1);
@@ -88,9 +95,9 @@ int BestaatDeFile(char* fileName){
  * Functie maak verbinding met de server
  */
 
-int ConnectNaarServer(struct sockaddr_in *serv_addr){
+int ConnectNaarServer(){
     
-    if(connect(sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
+    if((connect(sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0){
         perror("Connect error:");
         return -1;
     }

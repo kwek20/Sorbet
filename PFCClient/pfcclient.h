@@ -24,6 +24,7 @@
 #define NETWERKPOORT 2200
 
 int pfcClient(char** argv);
-int ServerGegevens(char* ip, struct sockaddr_in serv_addr);
+int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
-int ConnectNaarServer(struct sockaddr_in *serv_addr);
+int ConnectNaarServer();
+int FileNaarServer();
