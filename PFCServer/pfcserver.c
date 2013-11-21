@@ -27,6 +27,7 @@ int transform(char *text, char** to);
 int sendPacket(int sock, int packet, ...);
 
 int cur_cli = 0;
+int sock;
 
 /*
  * 
@@ -49,7 +50,6 @@ int main(int argc, char** argv) {
     server_addr.sin_port = htons(poort);
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    int sock = 0;
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket");
         return -1;
@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 }
 
 void create(int *sock){
-    int modus, fd, rec;
+    int modus = 0, fd, rec;
     struct sockaddr_in client_addr;
 
     char buffer[BUFSIZ];
@@ -119,16 +119,16 @@ void create(int *sock){
                     modus = atoi(array[0]);
                     printf("Selected modus: %i\n", modus);
                     sendPacket(fd, 100);
-                    if (modus = 200){
-                        
+                    if (modus == 200){
+                         puts("test3");
                     }
                 }
-                //modus = atoi();
             } else {
                 //hes in a modus? whatchu got for me
                 if (rec < 50){
                     //want to stop?
                     char *eind;
+                    eind = "";
                     strcat(eind, "101");
                     strcat(eind,  ":EOF");
                     if (strcmp(buffer, eind) == 0){
@@ -148,34 +148,61 @@ void create(int *sock){
 }
 
 int transform(char *text, char** to){
-    char *options[10];
     char *temp;
 
     temp = strtok(text, ":");
     int colon = 0;
 
     while (temp != NULL || temp != '\0'){
-        options[colon] = temp;
+        to[colon] = temp;
         temp = strtok(NULL, ":");
         colon++;
     }
-    options[colon] = 0;
-    to = options;
-    return colon-1;
+
+    return colon;
 }
 
-int sendPacket(int sock, int packet, ...){
-    va_list ap;
-    int i;
-    char *info;
-    info = (char *)packet;
+int sendPacket(int fd, int packet, ...){
+/*
+    puts("test4");
+    char *arg;
 
+    char *info = malloc(20);
+    info = "";
+
+    //     strcat(info, (char *) packet);
+
+    printf("[%s]", info);
+    puts("bleh");
+    
+    strcat(info, ":");
+
+    puts("test5");
+    printf("%s\n", info);
+
+    va_list ap;
     va_start(ap, packet);
-    for (i=packet; i>=0; i=va_arg(ap, int)){
-        strcat(info, (char *) i);
-        printf("%s\n", info);
+
+    puts("test6");
+
+    while ((arg = va_arg(ap, char *))){
+      if (arg != NULL){
+       printf("%s\n", arg);
+       strcat(info, arg);
+      } else {
+          break;
+      }
     }
+    printf("%s\n", info);
+    puts("test7");
     va_end(ap);
+*/
+    int bytes;
+    if((bytes=send(fd, &packet, sizeof(packet),0)) < 0){
+        perror("send");
+        return 0;
+    }
+    printf("Send %i bytes(%i)\n", bytes, packet);
     
     return 1;
 }
@@ -186,5 +213,6 @@ void setupSIG(){
 }
 
 void SIGexit(int sig){
-
+    close(sock);
+    exit(0);
 }
