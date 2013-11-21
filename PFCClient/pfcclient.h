@@ -19,6 +19,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #define BUFFERGROOTE 4096
 #define NETWERKPOORT 2200
@@ -28,3 +29,4 @@ int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer();
 int FileNaarServer();
+int OpenBestand(char* bestandsnaam);

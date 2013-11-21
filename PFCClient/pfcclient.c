@@ -10,7 +10,7 @@
 
 #include "pfcclient.h"
 
-int sockfd;
+int sockfd, bestandfd;
 struct sockaddr_in serv_addr;
 
 int main(int argc, char** argv) {
@@ -32,14 +32,15 @@ int main(int argc, char** argv) {
 int pfcClient(char** argv){
 
    //Check if file exists
-   /*
-    if((BestaatDeFile(argv[1])) < 0){
+   if((BestaatDeFile(argv[1])) < 0){
        printf("Geef een geldige file op\n");
        exit(1);
-   }   
-   */
+   }
+    
    //open file
-
+   if((OpenBestand(argv[1])) < 0){
+       exit(1);
+   }
 
    if((ServerGegevens(argv[2])) < 0){
        exit(1);
@@ -55,6 +56,17 @@ int pfcClient(char** argv){
    FileNaarServer();
    
    return 0;
+}
+
+/*
+ * Functie open bestand
+ */
+
+int OpenBestand(char* bestandsnaam){
+    if((bestandfd = open(bestandsnaam, O_RDONLY)) < 0){
+        return -1;
+    }
+    return 0;
 }
 
 /*
@@ -121,8 +133,9 @@ int ConnectNaarServer(){
 int FileNaarServer(){
     
     char buffer[BUFFERGROOTE];
-    
-    strcpy(buffer,"300:derp.txt"); //derp.txt wordt argv[1]
+    int readCounter = 0;
+
+    strcpy(buffer,"300:test.txt"); //test.txt wordt argv[1] zonder map structuur
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -140,22 +153,32 @@ int FileNaarServer(){
         
     printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
-    strcpy(buffer,"Dit moet een bestand voorstellen");
 
-    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
-        perror("Send file error:");
+    /*
+     * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
+     * Herhaal tot bestand compleet ingelezen is.
+     */
+    while((readCounter = read(bestandfd, &buffer, BUFFERGROOTE)) > 0){
+        if((send(sockfd, buffer, BUFFERGROOTE, 0)) < 0) {
+            perror("Send file error:");
+            return -1;
+        }
+
+        if((recv(sockfd, buffer, BUFFERGROOTE, 0)) < 0) {
+            perror("Receive metadata OK error:");
+            return -1;
+        }
+
+        if(strcmp(buffer, "100") != 0){return -1;}
+    }
+
+    if(readCounter < 0){
         return -1;
     }
 
-    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
-    perror("Receive metadata OK error:");
-    return -1;
-    }
-
-    printf("%s\n", buffer);
-
-    if(strcmp(buffer, "100") != 0){return -1;}
-
+    /*
+     * Bestand klaar met versturen. Geef dit aan aan server doormiddel van 101:EOF
+     */
     strcpy(buffer,"101:EOF");
 
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
@@ -171,6 +194,7 @@ int FileNaarServer(){
     printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
 
     close(sockfd);
+    close(bestandfd);
     
     return 0;
 }
