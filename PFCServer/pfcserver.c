@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <memory.h>
@@ -71,7 +72,6 @@ int main(int argc, char** argv) {
     for ( ;; ){
         if(cur_cli < MAX_CLI){
             cur_cli++;
-            printf("Created client %i\n", cur_cli);
             pthread_t client;
             pthread_create(&client, NULL, (void*)create, &sock);
             pthread_detach(client);
@@ -100,6 +100,9 @@ void create(int *sock){
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
 
+    char **array = malloc(1);
+    char *filename = malloc(1);
+
     for ( ;; ){
         if ((rec = recv(fd, buffer, sizeof(buffer),0)) < 0){
             perror("recv");
@@ -108,9 +111,9 @@ void create(int *sock){
             //connection closed
         } else {
             //good
+            int values = 0;
+
             if (modus == 0){
-                char **array = malloc(1);
-                int values = 0;
                 values = transform(buffer, array);
 
                 if (values < 1){
@@ -118,9 +121,11 @@ void create(int *sock){
                 } else {
                     modus = atoi(array[0]);
                     printf("Selected modus: %i\n", modus);
+                    strcpy(filename, array[1]);
+
                     sendPacket(fd, 100);
-                    if (modus == 200){
-                         puts("test3");
+                    if (modus == 300){
+                        
                     }
                 }
             } else {
@@ -128,39 +133,47 @@ void create(int *sock){
                 if (rec < 50){
                     //want to stop?
                     char *eind = malloc(20);
+                    strcpy(eind, "");
 
-                    puts("test1");
-
-                    eind = "";
-
-                    puts("test2");
-                    printf("[%s]", eind);
-
-                    char *pID;
-                    pID = "101";
+                    char *pID = malloc(20);
+                    sprintf(pID, "%d", 101);
 
                     strcat(eind, pID);
-
-                    puts("test3");
-
-                    strcat(eind,  ":EOF");
-
-                    puts("test4");
+                    strcat(eind, ":EOF");
 
                     if (strcmp(buffer, eind) == 0){
                         //stop data
-                        puts("test4s");
+                        puts("Stopping file transfer");
                         modus = 0;
-                        continue;
+                        sendPacket(fd, 100);
+                        //continue;
+                        
+                        //values = 0;
+                        break;
                     }
                 }
-                //MOAR data
-                //save it all
-                //printf("received data: %s\n", recv);
+
+                int file = open(filename, O_APPEND | O_WRONLY | O_CREAT);
+                if (file != 0){
+                    sendPacket(fd, 100);
+                    //MOAR data
+                    //save it all
+
+                    printf("received data: %s(%i)\n", buffer, rec);
+                    write(file, buffer, rec);
+                } else {
+                    perror("open");
+                }
+                memset(buffer, 0, sizeof(buffer));
+                
+                close(file);
+
             }
         }
     }
 
+    printf("Client stopped\n");
+    close(fd);
     cur_cli--;
 }
 
@@ -219,7 +232,6 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return 0;
     }
-    printf("Send %i bytes(%i)\n", bytes, packet);
     
     return 1;
 }
