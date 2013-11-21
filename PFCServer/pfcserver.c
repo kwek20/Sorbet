@@ -102,6 +102,7 @@ void create(int *sock){
 
     char **array = malloc(1);
     char *filename = malloc(1);
+    int file = -1;
 
     for ( ;; ){
         if ((rec = recv(fd, buffer, sizeof(buffer),0)) < 0){
@@ -145,6 +146,7 @@ void create(int *sock){
                         //stop data
                         puts("Stopping file transfer");
                         modus = 0;
+                        close(file);
                         sendPacket(fd, 100);
                         //continue;
                         
@@ -153,21 +155,21 @@ void create(int *sock){
                     }
                 }
 
-                int file = open(filename, O_APPEND | O_WRONLY | O_CREAT);
+                if (file < 0){
+                    file = open(filename, O_WRONLY | O_CREAT, 0666);
+                }
+                
                 if (file != 0){
                     sendPacket(fd, 100);
                     //MOAR data
                     //save it all
 
-                    printf("received data: %s(%i)\n", buffer, rec);
+                    printf("received data: %i\n", rec);
                     write(file, buffer, rec);
                 } else {
                     perror("open");
                 }
                 memset(buffer, 0, sizeof(buffer));
-                
-                close(file);
-
             }
         }
     }
