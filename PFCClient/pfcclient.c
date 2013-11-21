@@ -126,8 +126,9 @@ int FileNaarServer(){
         return -1;
     }
 
+    printf("%s\n", buffer);
 
-    if(!strcmp(buffer, "100")){
+    if(strcmp(buffer, "100") == 0){
         
         printf("Meta data succesvol verstuurd en ok ontvangen\n");
 

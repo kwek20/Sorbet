@@ -127,12 +127,29 @@ void create(int *sock){
                 //hes in a modus? whatchu got for me
                 if (rec < 50){
                     //want to stop?
-                    char *eind;
+                    char *eind = malloc(20);
+
+                    puts("test1");
+
                     eind = "";
-                    strcat(eind, "101");
+
+                    puts("test2");
+                    printf("[%s]", eind);
+
+                    char *pID;
+                    pID = "101";
+
+                    strcat(eind, pID);
+
+                    puts("test3");
+
                     strcat(eind,  ":EOF");
+
+                    puts("test4");
+
                     if (strcmp(buffer, eind) == 0){
                         //stop data
+                        puts("test4s");
                         modus = 0;
                         continue;
                     }
@@ -198,7 +215,7 @@ int sendPacket(int fd, int packet, ...){
     va_end(ap);
 */
     int bytes;
-    if((bytes=send(fd, &packet, sizeof(packet),0)) < 0){
+    if((bytes=send(fd, "100", sizeof(packet),0)) < 0){
         perror("send");
         return 0;
     }
