@@ -17,7 +17,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <stdarg.h>
+//#include <stdarg.h>
 
 
 #define PORT 2200
@@ -197,21 +197,20 @@ int transform(char *text, char** to){
 }
 
 int sendPacket(int fd, int packet, ...){
-/*
-    puts("test4");
     char *arg;
 
     char *info = malloc(20);
-    info = "";
+    strcpy(info, "");
 
-    //     strcat(info, (char *) packet);
+    char *packet = malloc(20);
+    sprintf(packet, "%d", packet);
 
-    printf("[%s]", info);
-    puts("bleh");
+    strcat(info, packet);
+
+    printf("[%s]\n", info);
     
     strcat(info, ":");
 
-    puts("test5");
     printf("%s\n", info);
 
     va_list ap;
@@ -230,7 +229,7 @@ int sendPacket(int fd, int packet, ...){
     printf("%s\n", info);
     puts("test7");
     va_end(ap);
-*/
+
     int bytes;
     if((bytes=send(fd, "100", sizeof(packet),0)) < 0){
         perror("send");

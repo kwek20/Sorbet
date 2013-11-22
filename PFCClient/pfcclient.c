@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     argc = 3;
-    argv[1] = "test.txt";
+    argv[1] = "icon.xpm";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     pfcClient(argv);
@@ -135,7 +135,7 @@ int FileNaarServer(){
     char buffer[BUFFERGROOTE];
     int readCounter = 0;
 
-    strcpy(buffer,"300:test.txt"); //test.txt wordt argv[1] zonder map structuur
+    strcpy(buffer,"300:icon.xpm"); //test.txt wordt argv[1] zonder map structuur
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -153,22 +153,23 @@ int FileNaarServer(){
         
     printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
-
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
      */
     while((readCounter = read(bestandfd, &buffer, BUFFERGROOTE)) > 0){
-        if((send(sockfd, buffer, BUFFERGROOTE, 0)) < 0) {
+        if((send(sockfd, buffer, readCounter, 0)) < 0) {
             perror("Send file error:");
             return -1;
         }
+        
+        printf("pakket verstuurd! %i\n", readCounter);
 
-        if((recv(sockfd, buffer, BUFFERGROOTE, 0)) < 0) {
+        if((recv(sockfd, buffer, readCounter, 0)) < 0) {
             perror("Receive metadata OK error:");
             return -1;
         }
-
+        
         if(strcmp(buffer, "100") != 0){return -1;}
     }
 
