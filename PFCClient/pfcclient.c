@@ -52,9 +52,9 @@ int pfcClient(char** argv){
        exit(1);
    }
 
-   //ConnectNaarServer();
-   ModifyCheck(argv[1]);
-   //FileTransfer();
+   ConnectNaarServer();
+   //ModifyCheckClient(argv[1]);
+   FileTransferSend(argv[1]);
    
    return 0;
 }
@@ -131,12 +131,16 @@ int ConnectNaarServer(){
  * Functie geef aan dat je een bestand wilt uploaden
  */
 
-int FileTransfer(){
+int FileTransferSend(char* bestandsnaam){
     
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE], statusCode[3];
     int readCounter = 0;
-
-    strcpy(buffer,"300:icon.xpm"); // status-code acceptatie en naam van bestand
+    
+    sprintf(statusCode, "%d", STATUS_CR);
+    
+    strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
+    strcat(buffer, ":");
+    strcat(buffer, bestandsnaam);
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -150,7 +154,7 @@ int FileTransfer(){
 
     printf("%s\n", buffer);
 
-    if(strcmp(buffer, "100") != 0){return -1;}
+    if(switchResult(buffer) != STATUS_OK){return -1;}
         
     printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
@@ -171,7 +175,7 @@ int FileTransfer(){
             return -1;
         }
         
-        if(strcmp(buffer, "100") != 0){return -1;}
+        if(switchResult(buffer) != STATUS_OK){return -1;}
     }
 
     if(readCounter < 0){
@@ -181,7 +185,10 @@ int FileTransfer(){
     /*
      * Bestand klaar met versturen. Geef dit aan aan server doormiddel van 101:EOF
      */
-    strcpy(buffer,"101:EOF");
+    
+    sprintf(statusCode, "%d", STATUS_EOF);
+    
+    strcpy(buffer,statusCode);
 
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send 101 error:");
@@ -192,6 +199,8 @@ int FileTransfer(){
         perror("Receive OK error:");
         return -1;
     }
+    
+    if(switchResult(buffer) != STATUS_OK){return -1;}
 
     printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
 
@@ -207,12 +216,44 @@ int FileTransfer(){
  * krijgt terug welke de nieuwste is.
  */
 
-int ModifyCheck(char* bestandsnaam){
-    time_t now;
-    time(&now);
+int ModifyCheckClient(char* bestandsnaam){
     
     struct stat bestandEigenschappen;
     stat(bestandsnaam, &bestandEigenschappen);
     
+    char statusCode[3], seconden[40];
+    char* buffer = malloc(BUFFERSIZE);
+    //int readCounter = 0;
+    
+    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
+    sprintf(statusCode, "%d", STATUS_MODCHK);
+    
+    strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
+    strcat(buffer, ":");
+    strcat(buffer, bestandsnaam);
+    strcat(buffer, ":");
+    strcat(buffer, seconden);
+    
+    // 301:naambestand:seconden - Request
+    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Send modifycheck request error:");
+        return -1;
+    }
+    
+    // Wacht op antwoord modifycheck van server
+    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive modififycheck result error:");
+        return -1;
+    }
+    
+    switchResult(buffer);
+    free(buffer);
     return 0;
 }
+
+/* 
+ * client verstuurd | 301:bestandnaam:datemodi
+ * client ontvangd | 401 | ga naar FileTransferSend()
+ * client ontvangd | 402 | ga naar FileTransferRecieve()
+ * client ontvangd | 2XX | Error
+ */

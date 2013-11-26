@@ -25,10 +25,12 @@ int switchResult(char* buffer){
     switch(statusCode) {
         case STATUS_OK:      return STATUS_OK;
         case STATUS_EOF:     return STATUS_EOF;
-        case STATUS_CR:      return FileTransfer(); 
-        case STATUS_MODCHK:  return ModifyCheck();
+        //case STATUS_CR:      return FileTransferRecieve();
+        //case STATUS_MODCHK:  return ModifyCheckServer(); //server
+        case STATUS_OLD:     return FileTransferSend(to[1]);
+        //case STATUS_NEW:     return FileTransferRecieve();
     }
-    
+    return 0;
 }
 
 /**
@@ -37,6 +39,8 @@ int switchResult(char* buffer){
  * @param to a pointer to the array
  * @return the amount of splits done (amount of values)
  */
+
+
 int transform(char *text, char** to){
     char *temp;
 

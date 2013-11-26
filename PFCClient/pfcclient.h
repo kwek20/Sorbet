@@ -39,16 +39,19 @@
 #define STATUS_CR  300 // Client vraagt bestandsoverdracht aan
 #define STATUS_MODCHK  301 // Client vraagt aan de server of er nieuwe/gewijzigde bestanden zijn.
 // 4xx Server naar client requests
+#define STATUS_OLD 401 //Server geeft aan dat file op server ouder is
+#define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is
 
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer();
-int FileTransfer();
+int FileTransferSend();
+int FileTransferRecieve();
 int OpenBestand(char* bestandsnaam);
-int ModifyCheck();
+int ModifyCheckServer();
+int ModifyCheckClient();
 
 int transform(char *text, char** to);
-
-int switchResult(char statusCode[]);
+int switchResult(char* buffer);
