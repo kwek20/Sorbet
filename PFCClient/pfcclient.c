@@ -52,8 +52,9 @@ int pfcClient(char** argv){
        exit(1);
    }
 
-   ConnectNaarServer();
-   FileNaarServer();
+   //ConnectNaarServer();
+   ModifyCheck(argv[1]);
+   //FileTransfer();
    
    return 0;
 }
@@ -130,12 +131,12 @@ int ConnectNaarServer(){
  * Functie geef aan dat je een bestand wilt uploaden
  */
 
-int FileNaarServer(){
+int FileTransfer(){
     
-    char buffer[BUFFERGROOTE];
+    char buffer[BUFFERSIZE];
     int readCounter = 0;
 
-    strcpy(buffer,"300:icon.xpm"); //test.txt wordt argv[1] zonder map structuur
+    strcpy(buffer,"300:icon.xpm"); // status-code acceptatie en naam van bestand
     
     if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
@@ -157,7 +158,7 @@ int FileNaarServer(){
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
      */
-    while((readCounter = read(bestandfd, &buffer, BUFFERGROOTE)) > 0){
+    while((readCounter = read(bestandfd, &buffer, BUFFERSIZE)) > 0){
         if((send(sockfd, buffer, readCounter, 0)) < 0) {
             perror("Send file error:");
             return -1;
@@ -196,6 +197,22 @@ int FileNaarServer(){
 
     close(sockfd);
     close(bestandfd);
+    
+    return 0;
+}
+
+
+/*
+ * Functie verstuurt de modify-date van een bestand naar de server en
+ * krijgt terug welke de nieuwste is.
+ */
+
+int ModifyCheck(char* bestandsnaam){
+    time_t now;
+    time(&now);
+    
+    struct stat bestandEigenschappen;
+    stat(bestandsnaam, &bestandEigenschappen);
     
     return 0;
 }
