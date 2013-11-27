@@ -53,7 +53,7 @@ int pfcClient(char** argv){
    }
 
    ConnectNaarServer(&sockfd);
-   //ModifyCheckClient(argv[1]);
+   //ModifyCheckClient(&sockfd, argv[1]);
    FileTransferSend(&sockfd, argv[1]);
    
    return 0;

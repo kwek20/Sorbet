@@ -29,7 +29,7 @@ int switchResult(int* sockfd, char* buffer){
         //case STATUS_CR:      return FileTransferRecieve();
         //case STATUS_MODCHK:  return ModifyCheckServer(); //server
         case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
-        //case STATUS_NEW:     return FileTransferRecieve();
+        case STATUS_NEW:     return FileTransferReceive(sockfd, to[1]);
     }
     return 0;
 }

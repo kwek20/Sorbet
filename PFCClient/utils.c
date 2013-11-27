@@ -170,17 +170,7 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
     
-    strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
-    strcat(buffer, ":");
-    strcat(buffer, bestandsnaam);
-    strcat(buffer, ":");
-    strcat(buffer, seconden);
-    
-    // 301:naambestand:seconden - Request
-    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
-        perror("Send modifycheck request error:");
-        return -1;
-    }
+    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden);
     
     // Wacht op antwoord modifycheck van server
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
@@ -188,7 +178,18 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
         return -1;
     }
     
+    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+    
+    // Wacht op antwoord modifycheck van server
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive modififycheck result error:");
+        return -1;
+    }
+    
+    strcat(buffer,":");
+    strcat(buffer,bestandsnaam);
     switchResult(sockfd, buffer);
+    
     free(buffer);
     return 0;
 }
