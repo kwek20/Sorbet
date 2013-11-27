@@ -8,7 +8,7 @@
  * Switch voor het maken van een structuur voor status-codes
  */
 
-#include "pfcclient.h"
+#include "pfc.h"
 
 int switchResult(char* buffer){
     

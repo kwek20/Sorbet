@@ -1,8 +1,8 @@
 /* 
- * File:   pfcclient.h
+ * File:   pfc.h
  * Author: Bartjan Zondag & Kevin Rosendaal
  *
- * Created on November 20, 2013, 11:26 AM
+ * Created on November 27, 2013, 11:26 AM
  */
 
 #include <stdio.h>
