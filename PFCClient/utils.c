@@ -10,6 +10,9 @@
 
 #include "pfc.h"
 
+/*Global vars*/
+int bestandfd;
+
 /*
  * Functie open bestand
  */
@@ -33,15 +36,10 @@ int BestaatDeFile(char* fileName){
     }
 }
 
-int FileTransferSend(char* bestandsnaam){
-    return FileTransferSend(bestandsnaam, sockfd);
-}
-
-
 /*
  * Functie geef aan dat je een bestand wilt uploaden
  */
-int FileTransferSend(char* bestandsnaam, int sock){
+int FileTransferSend(int* sockfd, char* bestandsnaam){
     
     char buffer[BUFFERSIZE], statusCode[3];
     int readCounter = 0;
@@ -52,19 +50,19 @@ int FileTransferSend(char* bestandsnaam, int sock){
     strcat(buffer, ":");
     strcat(buffer, bestandsnaam);
     
-    if((send(sock, buffer, strlen(buffer), 0)) < 0) {
+    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
         return -1;
     }
     
-    if((recv(sock, buffer, strlen(buffer), 0)) < 0) {
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive metadata OK error:");
         return -1;
     }
 
     printf("%s\n", buffer);
 
-    if(switchResult(buffer) != STATUS_OK){return -1;}
+    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
         
     printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
@@ -73,19 +71,19 @@ int FileTransferSend(char* bestandsnaam, int sock){
      * Herhaal tot bestand compleet ingelezen is.
      */
     while((readCounter = read(bestandfd, &buffer, BUFFERSIZE)) > 0){
-        if((send(sock, buffer, readCounter, 0)) < 0) {
+        if((send(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("Send file error:");
             return -1;
         }
         
         printf("pakket verstuurd! %i\n", readCounter);
 
-        if((recv(sock, buffer, readCounter, 0)) < 0) {
+        if((recv(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("Receive metadata OK error:");
             return -1;
         }
         
-        if(switchResult(buffer) != STATUS_OK){return -1;}
+        if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
     }
 
     if(readCounter < 0){
@@ -100,21 +98,21 @@ int FileTransferSend(char* bestandsnaam, int sock){
     
     strcpy(buffer,statusCode);
 
-    if((send(sock, buffer, strlen(buffer), 0)) < 0) {
+    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send 101 error:");
         return -1;
     }
 
-    if((recv(sock, buffer, strlen(buffer), 0)) < 0) {
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive OK error:");
         return -1;
     }
     
-    if(switchResult(buffer) != STATUS_OK){return -1;}
+    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
 
     printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
 
-    close(sock);
+    close(*sockfd);
     close(bestandfd);
     
     return 0;
@@ -124,7 +122,7 @@ int FileTransferSend(char* bestandsnaam, int sock){
  * Functie verstuurt de modify-date van een bestand naar de server en
  * krijgt terug welke de nieuwste is.
  */
-int ModifyCheckClient(char* bestandsnaam){
+int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     
     struct stat bestandEigenschappen;
     stat(bestandsnaam, &bestandEigenschappen);
@@ -143,18 +141,18 @@ int ModifyCheckClient(char* bestandsnaam){
     strcat(buffer, seconden);
     
     // 301:naambestand:seconden - Request
-    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send modifycheck request error:");
         return -1;
     }
     
     // Wacht op antwoord modifycheck van server
-    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive modififycheck result error:");
         return -1;
     }
     
-    switchResult(buffer);
+    switchResult(sockfd, buffer);
     free(buffer);
     return 0;
 }

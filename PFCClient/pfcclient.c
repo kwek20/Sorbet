@@ -10,7 +10,6 @@
 
 #include "pfc.h"
 
-int sockfd, bestandfd;
 struct sockaddr_in serv_addr;
 
 int main(int argc, char** argv) {
@@ -30,7 +29,8 @@ int main(int argc, char** argv) {
 }
 
 int pfcClient(char** argv){
-
+   int sockfd;
+    
    //Check if file exists
    if((BestaatDeFile(argv[1])) < 0){
        printf("Geef een geldige file op\n");
@@ -52,9 +52,9 @@ int pfcClient(char** argv){
        exit(1);
    }
 
-   ConnectNaarServer();
+   ConnectNaarServer(&sockfd);
    //ModifyCheckClient(argv[1]);
-   FileTransferSend(argv[1]);
+   FileTransferSend(&sockfd, argv[1]);
    
    return 0;
 }
@@ -92,9 +92,9 @@ int ServerGegevens(char* ip){
 /*
  * Functie maak verbinding met de server
  */
-int ConnectNaarServer(){
+int ConnectNaarServer(int* sockfd){
     
-    if((connect(sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0){
+    if((connect(*sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0){
         perror("Connect error:");
         return -1;
     }

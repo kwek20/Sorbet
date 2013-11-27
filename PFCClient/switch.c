@@ -10,7 +10,7 @@
 
 #include "pfc.h"
 
-int switchResult(char* buffer){
+int switchResult(int* sockfd, char* buffer){
     
     char** to = malloc(1);
     int statusCode = 0;
@@ -27,7 +27,7 @@ int switchResult(char* buffer){
         case STATUS_EOF:     return STATUS_EOF;
         //case STATUS_CR:      return FileTransferRecieve();
         //case STATUS_MODCHK:  return ModifyCheckServer(); //server
-        case STATUS_OLD:     return FileTransferSend(to[1]);
+        case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
         //case STATUS_NEW:     return FileTransferRecieve();
     }
     return 0;
