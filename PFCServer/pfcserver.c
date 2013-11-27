@@ -20,9 +20,6 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
-#define PORT 2200
-#define MAX_CLI 10
-
 void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
@@ -158,7 +155,7 @@ void create(int *sock){
                     strcpy(filename, array[1]);
 
                     //send ack packet
-                    sendPacket(fd, 100, 12, NULL);
+                    sendPacket(fd, STATUS_OK, NULL);
                 }
             } else {
                 //hes in a modus? whatchu got for me
@@ -173,7 +170,7 @@ void create(int *sock){
                         puts("Stopping file transfer");
                         modus = 0;
                         close(file);
-                        sendPacket(fd, 100, 12, NULL);
+                        sendPacket(fd, STATUS_OK, NULL);
                         //continue;
                         
                         //values = 0;
@@ -190,7 +187,7 @@ void create(int *sock){
                 //file open now?
                 if (file != 0){
                     //ack that we received data
-                    sendPacket(fd, 100, 12, NULL);
+                    sendPacket(fd, STATUS_OK, NULL);
                     //MOAR data
                     //save it all
                     printf("Received %i bytes of data\n", rec);

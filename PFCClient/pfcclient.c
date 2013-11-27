@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     argc = 3;
-    argv[1] = "icon.xpm";
+    argv[1] = "test.txt";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     pfcClient(argv);
