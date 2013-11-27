@@ -41,25 +41,22 @@ int BestaatDeFile(char* fileName){
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     
-    char buffer[BUFFERSIZE], statusCode[3];
+    char buffer[BUFFERSIZE], statusCode[4];
     int readCounter = 0;
     
     sprintf(statusCode, "%d", STATUS_CR);
-    
     strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
     strcat(buffer, ":");
     strcat(buffer, bestandsnaam);
-    
     if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
         return -1;
     }
-    
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive metadata OK error:");
         return -1;
     }
-
+    
     printf("%s\n", buffer);
 
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
