@@ -5,7 +5,7 @@
  * Created on November 19, 2013, 10:37 AM
  */
 
-#include "pfcserver.h"
+#include "../PFCClient/pfc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
