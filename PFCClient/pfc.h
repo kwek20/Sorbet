@@ -27,6 +27,8 @@
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
 
+#define MAX_CLI 10
+
 // 1xx OK en gerelateerde statussen
 #define STATUS_OK  100 // OK (bevestigingscode)
 #define STATUS_EOF 101 // End-of-file

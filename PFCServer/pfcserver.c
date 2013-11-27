@@ -12,9 +12,6 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
-#include <sys/socket.h>
-#include <signal.h>
-
 void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
@@ -96,6 +93,7 @@ int main(int argc, char** argv) {
  */
 void create(int *sock){
     //init vars
+    printf("made new client listener\n");
     int modus = 0, fd, rec;
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];

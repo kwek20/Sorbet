@@ -39,7 +39,7 @@ OBJECTFILES= \
 
 
 # C Compiler Flags
-CFLAGS=-V, -lpthread, -Wl
+CFLAGS=-V -lpthread
 
 # CC Compiler Flags
 CCFLAGS=
