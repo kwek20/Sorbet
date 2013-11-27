@@ -40,7 +40,7 @@
       </toolsSet>
       <compileType>
         <cTool>
-          <commandLine>-lpthread</commandLine>
+          <commandLine>-V, -lpthread, -Wl</commandLine>
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>

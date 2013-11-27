@@ -33,10 +33,15 @@ int BestaatDeFile(char* fileName){
     }
 }
 
+int FileTransferSend(char* bestandsnaam){
+    return FileTransferSend(bestandsnaam, sockfd);
+}
+
+
 /*
  * Functie geef aan dat je een bestand wilt uploaden
  */
-int FileTransferSend(char* bestandsnaam){
+int FileTransferSend(char* bestandsnaam, int sock){
     
     char buffer[BUFFERSIZE], statusCode[3];
     int readCounter = 0;
@@ -47,12 +52,12 @@ int FileTransferSend(char* bestandsnaam){
     strcat(buffer, ":");
     strcat(buffer, bestandsnaam);
     
-    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((send(sock, buffer, strlen(buffer), 0)) < 0) {
         perror("Send metadata error:");
         return -1;
     }
     
-    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((recv(sock, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive metadata OK error:");
         return -1;
     }
@@ -68,14 +73,14 @@ int FileTransferSend(char* bestandsnaam){
      * Herhaal tot bestand compleet ingelezen is.
      */
     while((readCounter = read(bestandfd, &buffer, BUFFERSIZE)) > 0){
-        if((send(sockfd, buffer, readCounter, 0)) < 0) {
+        if((send(sock, buffer, readCounter, 0)) < 0) {
             perror("Send file error:");
             return -1;
         }
         
         printf("pakket verstuurd! %i\n", readCounter);
 
-        if((recv(sockfd, buffer, readCounter, 0)) < 0) {
+        if((recv(sock, buffer, readCounter, 0)) < 0) {
             perror("Receive metadata OK error:");
             return -1;
         }
@@ -95,12 +100,12 @@ int FileTransferSend(char* bestandsnaam){
     
     strcpy(buffer,statusCode);
 
-    if((send(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((send(sock, buffer, strlen(buffer), 0)) < 0) {
         perror("Send 101 error:");
         return -1;
     }
 
-    if((recv(sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((recv(sock, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive OK error:");
         return -1;
     }
@@ -109,7 +114,7 @@ int FileTransferSend(char* bestandsnaam){
 
     printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
 
-    close(sockfd);
+    close(sock);
     close(bestandfd);
     
     return 0;

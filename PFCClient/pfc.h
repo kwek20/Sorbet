@@ -23,7 +23,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
-
+#define MAX_CLI 10
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
 
@@ -47,7 +47,8 @@ int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer();
-int FileTransferSend();
+int FileTransferSend(char* bestandsnaam);
+int FileTransferSend(char* bestandsnaam, int sock);
 int FileTransferRecieve();
 int OpenBestand(char* bestandsnaam);
 int ModifyCheckServer();

@@ -7,36 +7,31 @@
 
 #include "../PFCClient/pfc.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include <memory.h>
-#include <signal.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <stdarg.h>
 #include <semaphore.h>
+
+#include <sys/socket.h>
+#include <signal.h>
 
 void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
-int transform(char *text, char** to);
 int sendPacket(int sock, int packet, ...);
 void getEOF(char *to);
 struct sockaddr_in getServerAddr(int poort);
 
 int cur_cli = 0;
 sem_t client_wait; 
-int sock;
+
+int sock, bestandfd;
 
 /*
  * Main function, starts all threads
  */
 int main(int argc, char** argv) {
-    int poort = PORT;
+    int poort = NETWERKPOORT;
     if (argc > 1 && argv[1] != NULL){
         poort = atoi(argv[1]);
     }
@@ -72,7 +67,7 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    printf("Private file cloud server ready!\nWere listening for clients on port \"%i\".\n", PORT);
+    printf("Private file cloud server ready!\nWere listening for clients on port \"%i\".\n", NETWERKPOORT);
     for ( ;; ){
         //wait for free sem
         sem_wait(&client_wait);
@@ -208,27 +203,6 @@ void create(int *sock){
     
     //open sem for new thread
     sem_post(&client_wait);
-}
-
-/**
- * Turn a string into an array of strings split by the identifier ":"
- * @param text the text to split
- * @param to a pointer to the array
- * @return the amount of splits done (amount of values)
- */
-int transform(char *text, char** to){
-    char *temp;
-
-    temp = strtok(text, ":");
-    int colon = 0;
-
-    while (temp != NULL || temp != '\0'){
-        to[colon] = temp;
-        temp = strtok(NULL, ":");
-        colon++;
-    }
-
-    return colon;
 }
 
 /**
