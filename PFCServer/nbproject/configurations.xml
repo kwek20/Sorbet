@@ -12,6 +12,7 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>pfcserv.c</itemPath>
       <itemPath>pfcserver.c</itemPath>
       <itemPath>pfcserver.h</itemPath>
     </logicalFolder>
@@ -41,6 +42,8 @@
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>
+      <item path="pfcserv.c" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="pfcserver.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="pfcserver.h" ex="false" tool="3" flavor2="0">
@@ -66,6 +69,8 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
+      <item path="pfcserv.c" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="pfcserver.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="pfcserver.h" ex="false" tool="3" flavor2="0">
