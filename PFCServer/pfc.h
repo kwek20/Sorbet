@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 
 
 #define BUFFERSIZE 4096
@@ -50,10 +51,14 @@ int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer(int* sockfd);
 int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferRecieve();
+int FileTransferReceive(int* sockfd, char* bestandsnaam);
 int OpenBestand(char* bestandsnaam);
 int ModifyCheckServer();
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 
 int transform(char *text, char** to);
 int switchResult(int* sockfd, char* buffer);
+int sendPacket(int fd, int packet, ...);
+
+char *toString(int number);
+void getEOF(char *to);

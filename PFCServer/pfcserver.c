@@ -15,9 +15,7 @@
 void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
-int sendPacket(int sock, int packet, ...);
 struct sockaddr_in getServerAddr(int poort);
-void getEOF(char *to);
 
 int cur_cli = 0;
 sem_t client_wait; 
@@ -94,7 +92,7 @@ int main(int argc, char** argv) {
 void create(int *sock){
     //init vars
     printf("made new client listener\n");
-    int modus = 0, fd, rec;
+    int result = 0, fd, rec;
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];
     
@@ -115,11 +113,6 @@ void create(int *sock){
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
 
-    //variables used by things
-    char **array = malloc(1);
-    char *filename = malloc(1);
-    int file = -1;
-
     //loop forever until client stops
     for ( ;; ){
         //receive info
@@ -133,67 +126,11 @@ void create(int *sock){
             break;
         } else {
             //good
-            
-            //amount of parameters
-            int values = 0;
-            
-            //check the current modus
-            if (modus == 0){
-                //was waiting for a modus, transform data to options
-                values = transform(buffer, array);
-
-                if (values < 1){
-                    //?? empty, shouldnt have happened
-                } else {
-                    //set modus
-                    modus = atoi(array[0]);
-                    printf("Selected modus: %i\n", modus);
-                    strcpy(filename, array[1]);
-
-                    //send ack packet
-                    sendPacket(fd, STATUS_OK, NULL);
-                }
+            if ((result = switchResult(&fd, buffer)) < 0){
+                //error
+                break;
             } else {
-                //hes in a modus? whatchu got for me
-                if (rec < 50){
-                    //want to stop?
-                    char *eind = malloc(20);
-                    getEOF(eind);
-
-                    //is it an EOF packet?
-                    if (strcmp(buffer, eind) == 0){
-                        //stop data
-                        puts("Stopping file transfer");
-                        modus = 0;
-                        
-                        sendPacket(fd, STATUS_OK, NULL);
-                        continue;
-                        
-                        //close(file);
-                        //break;
-                    }
-                }
-
-                //was there a file still open?
-                if (file < 0){
-                    //no, open it
-                    file = open(filename, O_WRONLY | O_CREAT, 0666);
-                }
-                
-                //file open now?
-                if (file != 0){
-                    //ack that we received data
-                    sendPacket(fd, STATUS_OK, NULL);
-                    //MOAR data
-                    //save it all
-                    printf("Received %i bytes of data\n", rec);
-                    write(file, buffer, rec);
-                } else {
-                    perror("open");
-                }
-                
-                //clear received data
-                memset(buffer, 0, sizeof(buffer));
+                //wooo
             }
         }
     }
@@ -204,43 +141,6 @@ void create(int *sock){
     
     //open sem for new thread
     sem_post(&client_wait);
-}
-
-/**
- * Sends a packet to the fd defined
- * @param fd The fd to send this packet to
- * @param packet the packet number
- * @param ... the values for this packet, end with NULL
- * @return 1 if the packet was send succesfully. otherwise 0
- */
-int sendPacket(int fd, int packet, ...){
-
-    char *info = malloc(20);
-    strcpy(info, "");
-
-    char *p = malloc(20);
-
-    va_list ap;
-    int i;
-    
-    va_start(ap, packet);
-    
-    for (i = packet; i != NULL; i = va_arg(ap, int)){
-        sprintf(p, "%d", i);
-        strcat(info, p);
-        strcat(info, ":");
-    }
-    va_end(ap);
-
-    printf("info: %s\n", info);
-    
-    int bytes;
-    if((bytes=send(fd, info, sizeof(packet),0)) < 0){
-        perror("send");
-        return 0;
-    }
-    
-    return 1;
 }
 
 /**
@@ -278,16 +178,4 @@ struct sockaddr_in getServerAddr(int poort){
     server_addr.sin_addr.s_addr = INADDR_ANY;
     
     return server_addr;
-}
-
-/**
- * Creates the text needed for EOF packet
- * @param to where we place the text in
- */
-void getEOF(char *to){
-    strcpy(to, "");
-    char *pID = malloc(20);
-    sprintf(pID, "%d", STATUS_EOF);
-    strcat(to, pID);
-    strcat(to, ":EOF");
 }
