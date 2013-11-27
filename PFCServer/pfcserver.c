@@ -16,8 +16,8 @@ void SIGexit(int sig);
 void setupSIG();
 void create(int *sock);
 int sendPacket(int sock, int packet, ...);
-void getEOF(char *to);
 struct sockaddr_in getServerAddr(int poort);
+void getEOF(char *to);
 
 int cur_cli = 0;
 sem_t client_wait; 
@@ -126,8 +126,11 @@ void create(int *sock){
         if ((rec = recv(fd, buffer, sizeof(buffer),0)) < 0){
             perror("recv");
             printf("Client error! Stopping... \n");
+            break;
         } else if (rec == 0){
             //connection closed
+            printf("Client closed connection! Stopping... \n");
+            break;
         } else {
             //good
             
@@ -162,12 +165,12 @@ void create(int *sock){
                         //stop data
                         puts("Stopping file transfer");
                         modus = 0;
-                        close(file);
-                        sendPacket(fd, STATUS_OK, NULL);
-                        //continue;
                         
-                        //values = 0;
-                        break;
+                        sendPacket(fd, STATUS_OK, NULL);
+                        continue;
+                        
+                        //close(file);
+                        //break;
                     }
                 }
 
@@ -216,10 +219,6 @@ int sendPacket(int fd, int packet, ...){
     strcpy(info, "");
 
     char *p = malloc(20);
-    sprintf(p, "%d", packet);
-
-    strcat(info, p);
-    strcat(info, ":");
 
     va_list ap;
     int i;
@@ -227,12 +226,16 @@ int sendPacket(int fd, int packet, ...){
     va_start(ap, packet);
     
     for (i = packet; i != NULL; i = va_arg(ap, int)){
-        printf("%d ", i);
+        sprintf(p, "%d", i);
+        strcat(info, p);
+        strcat(info, ":");
     }
     va_end(ap);
 
+    printf("info: %s\n", info);
+    
     int bytes;
-    if((bytes=send(fd, "100", sizeof(packet),0)) < 0){
+    if((bytes=send(fd, info, sizeof(packet),0)) < 0){
         perror("send");
         return 0;
     }
@@ -259,18 +262,6 @@ void SIGexit(int sig){
 }
 
 /**
- * Creates the text needed for EOF packet
- * @param to where we place the text in
- */
-void getEOF(char *to){
-    strcpy(to, "");
-    char *pID = malloc(20);
-    sprintf(pID, "%d", 101);
-    strcat(to, pID);
-    strcat(to, ":EOF");
-}
-
-/**
  * creates a sockaddr_in with the needed information
  * @param poort the port used
  * @return the sockaddr_in we just made
@@ -287,4 +278,16 @@ struct sockaddr_in getServerAddr(int poort){
     server_addr.sin_addr.s_addr = INADDR_ANY;
     
     return server_addr;
+}
+
+/**
+ * Creates the text needed for EOF packet
+ * @param to where we place the text in
+ */
+void getEOF(char *to){
+    strcpy(to, "");
+    char *pID = malloc(20);
+    sprintf(pID, "%d", STATUS_EOF);
+    strcat(to, pID);
+    strcat(to, ":EOF");
 }
