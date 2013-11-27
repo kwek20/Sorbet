@@ -1,2 +1,8 @@
 /.project
+/Makefile
 /PFCClient/build/
+/PFCClient/dist/
+/PFCClient/nbproject/
+/PFCServer/build/
+/PFCServer/dist/
+/PFCServer/nbproject/
