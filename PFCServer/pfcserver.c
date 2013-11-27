@@ -158,7 +158,7 @@ void create(int *sock){
                     strcpy(filename, array[1]);
 
                     //send ack packet
-                    sendPacket(fd, 100, 12, NULL);
+                    sendPacket(fd, 100);
                 }
             } else {
                 //hes in a modus? whatchu got for me
@@ -173,7 +173,7 @@ void create(int *sock){
                         puts("Stopping file transfer");
                         modus = 0;
                         close(file);
-                        sendPacket(fd, 100, 12, NULL);
+                        sendPacket(fd, 100);
                         //continue;
                         
                         //values = 0;
@@ -190,7 +190,7 @@ void create(int *sock){
                 //file open now?
                 if (file != 0){
                     //ack that we received data
-                    sendPacket(fd, 100, 12, NULL);
+                    sendPacket(fd, 100);
                     //MOAR data
                     //save it all
                     printf("Received %i bytes of data\n", rec);
@@ -247,19 +247,22 @@ int sendPacket(int fd, int packet, ...){
     strcpy(info, "");
 
     char *p = malloc(20);
-    sprintf(p, "%d", packet);
-
-    strcat(info, p);
-    strcat(info, ":");
-
+    
     va_list ap;
     int i;
     
     va_start(ap, packet);
-    
+    printf("[");
     for (i = packet; i != NULL; i = va_arg(ap, int)){
+        sprintf(p, "%d", i);
+        
+        strcat(info, p);
+        strcat(info, ":");
+        
         printf("%d ", i);
     }
+    printf("]\n");
+    printf("%s\n", info);
     va_end(ap);
 
     int bytes;
