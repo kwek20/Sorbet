@@ -28,6 +28,9 @@
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
 
+#define STUK -1
+#define MOOI 1
+
 #define MAX_CLI 10
 
 // 1xx OK en gerelateerde statussen
@@ -53,12 +56,13 @@ int ConnectNaarServer(int* sockfd);
 int FileTransferSend(int* sockfd, char* bestandsnaam);
 int FileTransferReceive(int* sockfd, char* bestandsnaam);
 int OpenBestand(char* bestandsnaam);
-int ModifyCheckServer();
+int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 
 int transform(char *text, char** to);
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
 
+int modifiedTime(char *bestandsnaam);
 char *toString(int number);
 void getEOF(char *to);

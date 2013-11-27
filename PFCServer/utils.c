@@ -134,7 +134,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
             if (rec < 50){
                 //want to stop?
                 if(switchResult(sockfd, buffer) == STATUS_EOF){
-                    printf("Stopping file transfer!");
+                    printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
                     break;
                 }
@@ -154,6 +154,53 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
     return 1;
 }
 
+/**
+ * 
+ * @param sockfd
+ * @param bestandsnaam
+ * @param timeleft
+ * @return 
+ */
+int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
+    int file, time = atoi(timeleft);
+    char *buffer = malloc(1);
+    if ((file = open(bestandsnaam, O_RDONLY, 0666)) != 0){
+        sendPacket(*sockfd, STATUS_OLD);
+        
+        sprintf(buffer, "%i", STATUS_CR);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+    }
+    
+    int owntime;
+    if ((owntime = modifiedTime(bestandsnaam)) < time){
+        //old
+        sendPacket(*sockfd, STATUS_OLD);
+        
+        sprintf(buffer, "%i", STATUS_CR);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+
+    } else if (owntime > time){
+        //newer        
+        sendPacket(*sockfd, STATUS_NEW);
+        
+        sprintf(buffer, "%i", STATUS_OLD);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+    } else {
+        //same
+        return MOOI;
+    }
+    
+    if(switchResult(sockfd, buffer) != STATUS_OK){
+        return STUK;
+    } else {
+        return MOOI;
+    }
+}
+
+
 /*
  * Functie verstuurt de modify-date van een bestand naar de server en
  * krijgt terug welke de nieuwste is.
@@ -170,17 +217,7 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
     
-    strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
-    strcat(buffer, ":");
-    strcat(buffer, bestandsnaam);
-    strcat(buffer, ":");
-    strcat(buffer, seconden);
-    
-    // 301:naambestand:seconden - Request
-    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
-        perror("Send modifycheck request error:");
-        return -1;
-    }
+    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden);
     
     // Wacht op antwoord modifycheck van server
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
@@ -188,7 +225,18 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
         return -1;
     }
     
+    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+    
+    // Wacht op antwoord modifycheck van server
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive modififycheck result error:");
+        return -1;
+    }
+    
+    strcat(buffer,":");
+    strcat(buffer,bestandsnaam);
     switchResult(sockfd, buffer);
+    
     free(buffer);
     return 0;
 }
@@ -246,4 +294,19 @@ void getEOF(char *to){
     sprintf(pID, "%d", STATUS_EOF);
     strcat(to, pID);
     strcat(to, ":EOF");
+}
+
+/**
+ * 
+ * @param bestandsnaam
+ * @return sec vanaf 1970 of -1
+ */
+int modifiedTime(char *bestandsnaam){
+    struct stat eigenschappen;
+    
+    if (stat(bestandsnaam, &eigenschappen) < 0){
+        return STUK;
+    }
+    
+    return eigenschappen.st_mtim.tv_sec;
 }

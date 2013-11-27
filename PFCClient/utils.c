@@ -134,7 +134,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
             if (rec < 50){
                 //want to stop?
                 if(switchResult(sockfd, buffer) == STATUS_EOF){
-                    printf("Stopping file transfer!");
+                    printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
                     break;
                 }
@@ -153,6 +153,53 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
     close(file);
     return 1;
 }
+
+/**
+ * 
+ * @param sockfd
+ * @param bestandsnaam
+ * @param timeleft
+ * @return 
+ */
+int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
+    int file, time = atoi(timeleft);
+    char *buffer = malloc(1);
+    if ((file = open(bestandsnaam, O_RDONLY, 0666)) != 0){
+        sendPacket(*sockfd, STATUS_OLD);
+        
+        sprintf(buffer, "%i", STATUS_CR);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+    }
+    
+    int owntime;
+    if ((owntime = modifiedTime(bestandsnaam)) < time){
+        //old
+        sendPacket(*sockfd, STATUS_OLD);
+        
+        sprintf(buffer, "%i", STATUS_CR);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+
+    } else if (owntime > time){
+        //newer        
+        sendPacket(*sockfd, STATUS_NEW);
+        
+        sprintf(buffer, "%i", STATUS_OLD);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+    } else {
+        //same
+        return MOOI;
+    }
+    
+    if(switchResult(sockfd, buffer) != STATUS_OK){
+        return STUK;
+    } else {
+        return MOOI;
+    }
+}
+
 
 /*
  * Functie verstuurt de modify-date van een bestand naar de server en
@@ -247,4 +294,19 @@ void getEOF(char *to){
     sprintf(pID, "%d", STATUS_EOF);
     strcat(to, pID);
     strcat(to, ":EOF");
+}
+
+/**
+ * 
+ * @param bestandsnaam
+ * @return sec vanaf 1970 of -1
+ */
+int modifiedTime(char *bestandsnaam){
+    struct stat eigenschappen;
+    
+    if (stat(bestandsnaam, &eigenschappen) < 0){
+        return STUK;
+    }
+    
+    return eigenschappen.st_mtim.tv_sec;
 }
