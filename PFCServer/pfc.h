@@ -1,6 +1,6 @@
 /* 
  * File:   pfc.h
- * Author: Bartjan Zondag & Kevin Rosendaal
+ * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
  *
  * Created on November 27, 2013, 11:26 AM
  */
@@ -61,6 +61,8 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 
 int transform(char *text, char** to);
+int transformWith(char *text, char** to, char *delimit);
+
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
 int waitForOk(int fd);
@@ -70,4 +72,6 @@ int modifiedTime(char *bestandsnaam);
 
 char *toString(int number);
 void getEOF(char *to);
-
+void printStart(void);
+char* getInput(int max);
+void printArray(int length, char *array[]);

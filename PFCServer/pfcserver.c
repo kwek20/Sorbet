@@ -1,6 +1,6 @@
 /* 
  * File:   pfcserver.c
- * Author: FPC project group
+ * Author: Brord van Wierst
  *
  * Created on November 19, 2013, 10:37 AM
  */
@@ -12,15 +12,19 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
-void SIGexit(int sig);
 void setupSIG();
+void SIGexit(int sig);
+void quit();
+
 void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
 
-int cur_cli = 0;
-sem_t client_wait; 
+void command(void);
+void help(char **args, int amount);
+void numcli();
 
-int sock, bestandfd;
+int sock, bestandfd, cur_cli = 0;
+sem_t client_wait; 
 
 /*
  * Main function, starts all threads
@@ -62,6 +66,11 @@ int main(int argc, char** argv) {
         return -1;
     }
     
+    printStart();
+    
+    pthread_t cmd;
+    pthread_create(&cmd, NULL, (void*)command, NULL);
+    
     printf("Private file cloud server ready!\nWere listening for clients on port \"%i\".\n", NETWERKPOORT);
     for ( ;; ){
         //wait for free sem
@@ -81,6 +90,8 @@ int main(int argc, char** argv) {
             }
         }
     }
+    
+    pthread_join(cmd, NULL);
     return (EXIT_SUCCESS);
 }
 
@@ -91,7 +102,6 @@ int main(int argc, char** argv) {
  */
 void create(int *sock){
     //init vars
-    printf("made new client listener\n");
     int result = 0, fd, rec;
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];
@@ -108,7 +118,7 @@ void create(int *sock){
     int poort = htons(client_addr.sin_port);
 
     //print information
-    printf("-------------\nConnection accepted with client: %i\n", fd);
+    printf("\n-------------\nConnection accepted with client: %i\n", fd);
     printf("Ip nummer: %s\n", ip);
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
@@ -157,8 +167,13 @@ void setupSIG(){
  * @param sig the sig which ends
  */
 void SIGexit(int sig){
+    quit();
+}
+
+void quit(){
+    puts("\nWere leaving! Bye :(");
     close(sock);
-    exit(0);
+    exit(MOOI);
 }
 
 /**
@@ -178,4 +193,50 @@ struct sockaddr_in getServerAddr(int poort){
     server_addr.sin_addr.s_addr = INADDR_ANY;
     
     return server_addr;
+}
+
+/******************************************************
+ *                  COMMANDS FROM HERE
+ ******************************************************/
+
+void command(void){
+    int amount;
+    char *command;
+    char **args = malloc(1);
+    for ( ;; ){
+        printf(" >");
+        command = getInput(50);
+        amount = transformWith(command, args, " ");
+        if (amount < 1) continue;
+        if (strcasecmp(args[0], "help") == MOOI){
+            help(args, amount);
+        } else if(strcasecmp(args[0], "numcli") == MOOI){
+            numcli();
+        } else if(strcasecmp(args[0], "exit") == MOOI){
+            break;
+        } else {
+            help(args, amount);
+        }
+    }
+    
+    quit();
+}
+
+void help(char **args, int amount){
+    if (amount > 1){
+        if (strcasecmp(args[1], "help") == MOOI){
+            printf("help [command] -> Show help about a specific command\n");
+            printf("help -> Show all the commands in a list\n");
+        } else if (strcasecmp(args[1], "numcli") == MOOI){
+            printf("numcli -> Will show you the current amount of online clients\n");
+        } else if (strcasecmp(args[1], "exit") == MOOI){
+            printf("exit -> This will gracefully stop the server and its active connections\n");
+        }
+    } else {
+        printf("Available commands: help, numcli, exit\n");
+    }
+}
+
+void numcli(){
+    printf("Currently online clients: %i.\n", cur_cli);
 }

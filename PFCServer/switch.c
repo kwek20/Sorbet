@@ -42,12 +42,21 @@ int switchResult(int* sockfd, char* buffer){
  * @param to a pointer to the array
  * @return the amount of splits done (amount of values)
  */
-
-
 int transform(char *text, char** to){
+    char *lim = ":";
+    return transformWith(text, to, lim);
+}
+
+/**
+ * Turn a string into an array of strings split by the identifier ":"
+ * @param text the text to split
+ * @param to a pointer to the array
+ * @return the amount of splits done (amount of values)
+ */
+int transformWith(char *text, char** to, char *delimit){
     char *temp;
 
-    temp = strtok(text, ":");
+    temp = strtok(text, delimit);
     int numVars = 0;
 
     while (temp != NULL || temp != '\0'){
@@ -55,6 +64,5 @@ int transform(char *text, char** to){
         temp = strtok(NULL, ":");
         numVars++;
     }
-    
     return numVars;
 }

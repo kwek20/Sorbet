@@ -57,6 +57,8 @@ int pfcClient(char** argv){
        perror("Create socket error:");
        exit(-1);
    }
+   
+   printStart();
 
    ConnectNaarServer(&sockfd);
    if(ModifyCheckClient(&sockfd, argv[1]) < 0){

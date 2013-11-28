@@ -312,3 +312,38 @@ int changeModTime(char *bestandsnaam, int time){
     
     return utimes(bestandsnaam, t);
 }
+
+void printArray(int length, char *array[]){
+    int i;
+    for (i=0; i<length; i++){
+        printf("%s ", array[i]);
+    }
+    puts("\n");
+}
+
+char* getInput(int max){
+    char *temp = malloc(max);
+    fgets(temp,max,stdin);
+    temp[strlen(temp)-1]='\0';
+    return temp;
+}
+
+void printStart(void){
+    system("clear");
+    puts("-----------------------------");
+    puts("|    Welcome to sorbet!     |");
+    puts("|             . ,           |");
+    puts("|          *    ,           |");
+    puts("|     ` *~.|,~* '           |");
+    puts("|     '  ,~*~~* `     _     |");
+    puts("|      ,* / \\`* '    //     |");
+    puts("|       ,* ; \\,O.   //      |");
+    puts("|           ,(:::)=//       |");
+    puts("|         (  `~(###)        |");
+    puts("|           %---'`\"y        |");
+    puts("|            \\    /         |");
+    puts("|             \\  /          |");
+    puts("|            __)(__         |");
+    puts("|           '------`        |");
+    puts("-----------------------------");
+}
