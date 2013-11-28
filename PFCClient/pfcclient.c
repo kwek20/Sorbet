@@ -1,11 +1,12 @@
 /* 
  * File:   pfcclient.c
  * Author: Bartjan Zondag & Kevin Rosendaal
- *
+ * 
  */
 
 /*
- * Deze client kan een file uploaden naar de PFC server
+ * Deze client kan een file uploaden/downloaden naar/van de PFC server.
+ * Dit gebeurd via een synchronisatie protocol. 
  */
 
 #include "pfc.h"
@@ -28,28 +29,33 @@ int main(int argc, char** argv) {
     return (EXIT_SUCCESS);
 }
 
+/**
+ * Hoofdprogramma voor de pfcClient
+ * @param argv argumenten van commandline
+ * @return 0 if succesvol. -1 if failed.
+ */
 int pfcClient(char** argv){
    int sockfd;
     
    //Check if file exists
    if((BestaatDeFile(argv[1])) < 0){
        printf("Geef een geldige file op\n");
-       exit(1);
+       exit(-1);
    }
     
    //open file
    if((OpenBestand(argv[1])) < 0){
-       exit(1);
+       exit(-1);
    }
 
    if((ServerGegevens(argv[2])) < 0){
-       exit(1);
+       exit(-1);
    }
    
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
        perror("Create socket error:");
-       exit(1);
+       exit(-1);
    }
 
    ConnectNaarServer(&sockfd);
@@ -58,12 +64,11 @@ int pfcClient(char** argv){
    
    return 0;
 }
-
-
-/*
+/**
  * Functie serv_addr vullen
+ * @param ip Ascii ip van server 
+ * @return 0 if succesvol. -1 if failed.
  */
-
 int ServerGegevens(char* ip){
 
     //memsets
@@ -89,8 +94,10 @@ int ServerGegevens(char* ip){
    return 0;
 }
 
-/*
+/**
  * Functie maak verbinding met de server
+ * @param sockfd file descriptor voor de server
+ * @return 0 if succesvol. -1 if failed.
  */
 int ConnectNaarServer(int* sockfd){
     
