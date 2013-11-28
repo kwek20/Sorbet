@@ -16,10 +16,13 @@ int switchResult(int* sockfd, char* buffer){
     
     transform(buffer, to);
     
+    if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
+    
     if((statusCode = atoi(to[0])) < 100){
         printf("error with statusCode\n");
         return -1;
     }
+    printf("received packet: %i, info: %s(%i)\n", statusCode, buffer, strlen(buffer));
     
     switch(statusCode) {
         case STATUS_OK:      return STATUS_OK;
@@ -31,7 +34,7 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
         case STATUS_NEW:     return FileTransferReceive(sockfd, to[1]);
     }
-    return 0;
+    return STUK;
 }
 
 /**

@@ -22,6 +22,7 @@ int switchResult(int* sockfd, char* buffer){
         printf("error with statusCode\n");
         return -1;
     }
+    printf("received packet: %i, info: %s(%i)\n", statusCode, buffer, strlen(buffer));
     
     switch(statusCode) {
         case STATUS_OK:      return STATUS_OK;
@@ -33,7 +34,7 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
         case STATUS_NEW:     return FileTransferReceive(sockfd, to[1]);
     }
-    return 0;
+    return STUK;
 }
 
 /**

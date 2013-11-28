@@ -44,9 +44,9 @@ int pfcClient(char** argv){
    }
     
    //open file
-   if((OpenBestand(argv[1])) < 0){
-       exit(-1);
-   }
+//   if((OpenBestand(argv[1])) < 0){
+//       exit(-1);
+//   }
 
    if((ServerGegevens(argv[2])) < 0){
        exit(-1);
