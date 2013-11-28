@@ -16,6 +16,8 @@ int switchResult(int* sockfd, char* buffer){
     
     transform(buffer, to);
     
+    if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
+    
     if((statusCode = atoi(to[0])) < 100){
         printf("error with statusCode\n");
         return -1;

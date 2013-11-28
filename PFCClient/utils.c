@@ -159,7 +159,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
  * @param sockfd
  * @param bestandsnaam
  * @param timeleft
- * @return 
+ * @return 0 if succesvol. -1 if failed. 
  */
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
@@ -201,40 +201,48 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
 }
 
 
-/*
+/**
  * Functie verstuurt de modify-date van een bestand naar de server en
  * krijgt terug welke de nieuwste is.
+ * @param sockfd
+ * @param bestandsnaam 
+ * @return 0 if succesvol. -1 if failed.
  */
 int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     
     struct stat bestandEigenschappen;
     stat(bestandsnaam, &bestandEigenschappen);
     
-    char statusCode[3], seconden[40];
+    char statusCode[4], seconden[40];
     char* buffer = malloc(BUFFERSIZE);
     //int readCounter = 0;
     
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
     
-    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden);
+    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
+    printf("na sendPacket\n");
     
     // Wacht op antwoord modifycheck van server
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive modififycheck result error:");
         return -1;
     }
-    
+    printf("na recv 1\n");
+    printf("buffer: %s\n",buffer);
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
     
+    printf("na switchResult\n");
     // Wacht op antwoord modifycheck van server
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive modififycheck result error:");
         return -1;
     }
+    printf("na recv 2\n");
     
     strcat(buffer,":");
     strcat(buffer,bestandsnaam);
+    printf("na strcat bestand en :\n");
     switchResult(sockfd, buffer);
     
     free(buffer);
@@ -298,7 +306,7 @@ void getEOF(char *to){
 
 /**
  * 
- * @param bestandsnaam
+ * @param bestandsnaam 
  * @return sec vanaf 1970 of -1
  */
 int modifiedTime(char *bestandsnaam){

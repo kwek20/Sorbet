@@ -59,8 +59,11 @@ int pfcClient(char** argv){
    }
 
    ConnectNaarServer(&sockfd);
-   //ModifyCheckClient(&sockfd, argv[1]);
-   FileTransferSend(&sockfd, argv[1]);
+   if(ModifyCheckClient(&sockfd, argv[1]) < 0){
+       printf("error bij ModifyCheckClient\n");
+       exit(EXIT_FAILURE);
+   }
+   //FileTransferSend(&sockfd, argv[1]);
    
    return 0;
 }
