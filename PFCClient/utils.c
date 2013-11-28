@@ -215,7 +215,7 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     
     char statusCode[4], seconden[40];
     char* buffer = malloc(BUFFERSIZE);
-    //int readCounter = 0;
+    int readCounter = 0;
     
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
@@ -224,10 +224,11 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     printf("na sendPacket\n");
     
     // Wacht op antwoord modifycheck van server
-    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+    if((readCounter = recv(*sockfd, buffer, strlen(buffer), 0)) <= 0) {
         perror("Receive modififycheck result error:");
         return -1;
     }
+    printf("readCounter: %i\n",readCounter);
     printf("na recv 1\n");
     printf("buffer: %s\n",buffer);
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
