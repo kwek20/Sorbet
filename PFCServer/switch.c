@@ -33,7 +33,10 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_MODCHK:  return ModifyCheckServer(sockfd, to[1], to[2]); //server
         case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
         case STATUS_NEW:     return FileTransferReceive(sockfd, to[1]);
+        
+        
     }
+    printf("stuk!\n");
     return STUK;
 }
 

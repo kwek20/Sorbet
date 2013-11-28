@@ -1,6 +1,6 @@
 /* 
  * File:   utils.c
- * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
+ * Author: Bartjan Zondag & Kevin Rosendaal
  *
  */
 
@@ -44,31 +44,45 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     char buffer[BUFFERSIZE], statusCode[4];
     int readCounter = 0;
     
-    if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
-        perror("Receive metadata OK error");
+    sprintf(statusCode, "%d", STATUS_CR);
+    strcpy(buffer, statusCode); // status-code acceptatie en naam van bestand
+    strcat(buffer, ":");
+    strcat(buffer, bestandsnaam);
+    if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Send metadata error:");
+        return -1;
+    }
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive metadata OK error:");
         return -1;
     }
     
-    if((OpenBestand(bestandsnaam)) < 0){return -1;}
+    printf("%s\n", buffer);
+
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+        
+    printf("Meta data succesvol verstuurd en ok ontvangen\n");
 
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
      */
-    while((readCounter = read(bestandfd, buffer, BUFFERSIZE)) > 0){
+    while((readCounter = read(bestandfd, &buffer, BUFFERSIZE)) > 0){
         if((send(*sockfd, buffer, readCounter, 0)) < 0) {
-            perror("Send file error");
+            perror("Send file error:");
             return -1;
         }
         
+        printf("pakket verstuurd! %i\n", readCounter);
+
         if((recv(*sockfd, buffer, readCounter, 0)) < 0) {
-            perror("Receive metadata OK error");
+            perror("Receive metadata OK error:");
             return -1;
         }
         
         if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
     }
+
     if(readCounter < 0){
         return -1;
     }
@@ -82,19 +96,22 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     strcpy(buffer,statusCode);
 
     if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
-        perror("Send 101 error");
+        perror("Send 101 error:");
         return -1;
     }
 
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
-        perror("Receive OK error");
+        perror("Receive OK error:");
         return -1;
     }
     
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
 
-    printf("EOF verstuurd en ok ontvangen. \n");
+    printf("EOF verstuurd en ok ontvangen. verbinding wordt verbroken\n");
+
+    close(*sockfd);
     close(bestandfd);
+    
     return 0;
 }
 
@@ -126,6 +143,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
             //ack that we received data
             sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
+            printf("Received %i bytes of data\n", rec);
             write(file, buffer, rec);
 
             //clear received data
@@ -146,43 +164,40 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
     char *buffer = malloc(1);
-    
-    if ((file = open(bestandsnaam, O_RDONLY, 0666)) < 0){
-        sendPacket(*sockfd, STATUS_OLD, NULL);
+    if ((file = open(bestandsnaam, O_RDONLY, 0666)) != 0){
+        sendPacket(*sockfd, STATUS_OLD);
         
         sprintf(buffer, "%i", STATUS_CR);
         strcat(buffer, ":");
         strcat(buffer, bestandsnaam);
-    } else {
-        int owntime;
-        if ((owntime = modifiedTime(bestandsnaam)) < time){
-            //own file older
-            sendPacket(*sockfd, STATUS_OLD, NULL);
-            //sendPacket(*sockfd, STATUS_NEW, NULL);
-
-            sprintf(buffer, "%i", STATUS_NEW);
-            strcat(buffer, ":");
-            strcat(buffer, bestandsnaam);
-
-        } else if (owntime > time){
-            //own file newer  
-            sendPacket(*sockfd, STATUS_NEW, NULL);
-
-            sprintf(buffer, "%i", STATUS_OLD);
-            strcat(buffer, ":");
-            strcat(buffer, bestandsnaam);
-        } else {
-            //same
-            return MOOI;
-        }
     }
     
-    if (waitForOk(*sockfd) == MOOI){
-        return switchResult(sockfd, buffer);
+    int owntime;
+    if ((owntime = modifiedTime(bestandsnaam)) < time){
+        //old
+        sendPacket(*sockfd, STATUS_OLD);
+        
+        sprintf(buffer, "%i", STATUS_CR);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
+
+    } else if (owntime > time){
+        //newer        
+        sendPacket(*sockfd, STATUS_NEW);
+        
+        sprintf(buffer, "%i", STATUS_OLD);
+        strcat(buffer, ":");
+        strcat(buffer, bestandsnaam);
     } else {
+        //same
+        return MOOI;
+    }
+    
+    if(switchResult(sockfd, buffer) != STATUS_OK){
         return STUK;
+    } else {
+        return MOOI;
     }
-    
 }
 
 
@@ -194,6 +209,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
  * @return 0 if succesvol. -1 if failed.
  */
 int ModifyCheckClient(int* sockfd, char* bestandsnaam){
+    
     struct stat bestandEigenschappen;
     stat(bestandsnaam, &bestandEigenschappen);
     
@@ -203,18 +219,31 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
+    
     sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
+    printf("na sendPacket\n");
     
     // Wacht op antwoord modifycheck van server
-    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
-        //printf("%s(%i)\n", buffer, readCounter);
-        perror("Receive modififycheck result error1");
+    if((readCounter = recv(*sockfd, buffer, strlen(buffer), 0)) <= 0) {
+        perror("Receive modififycheck result error:");
         return -1;
     }
-    sendPacket(*sockfd, STATUS_OK, NULL);
+    printf("readCounter: %i\n",readCounter);
+    printf("na recv 1\n");
+    printf("buffer: %s\n",buffer);
+    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+    
+    printf("na switchResult\n");
+    // Wacht op antwoord modifycheck van server
+    if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
+        perror("Receive modififycheck result error:");
+        return -1;
+    }
+    printf("na recv 2\n");
     
     strcat(buffer,":");
     strcat(buffer,bestandsnaam);
+    printf("na strcat bestand en :\n");
     switchResult(sockfd, buffer);
     
     free(buffer);
@@ -250,13 +279,12 @@ int sendPacket(int fd, int packet, ...){
     info[strlen(info)-1] = '\0';
     
     int bytes;
-    
-    if((bytes=send(fd, info, strlen(info),0)) < 0){
+    if((bytes=send(fd, info, sizeof(packet),0)) < 0){
         perror("send");
-        return STUK;
+        return 0;
     }
-    printf("send packet: %i info:%s(%i)\n", packet, info, bytes);
-    return MOOI;
+    
+    return 1;
 }
 
 char *toString(int number){
@@ -290,15 +318,4 @@ int modifiedTime(char *bestandsnaam){
     }
     
     return eigenschappen.st_mtim.tv_sec;
-}
-
-int waitForOk(int fd){
-    char *buffer = malloc(1);
-    if((recv(fd, buffer, BUFFERSIZE, 0)) < 0) {
-        perror("Receive OK error");
-        return STUK;
-    }
-    
-    if(switchResult(&fd, buffer) != STATUS_OK){return STUK;}
-    return MOOI;
 }

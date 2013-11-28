@@ -29,7 +29,7 @@
 #define NETWERKPOORT 2200
 
 #define STUK -1
-#define MOOI 1
+#define MOOI 0
 
 #define MAX_CLI 10
 
@@ -66,3 +66,5 @@ int sendPacket(int fd, int packet, ...);
 int modifiedTime(char *bestandsnaam);
 char *toString(int number);
 void getEOF(char *to);
+
+int waitForOk(int fd);
