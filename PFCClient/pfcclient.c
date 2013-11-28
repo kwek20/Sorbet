@@ -38,10 +38,10 @@ int pfcClient(char** argv){
    int sockfd;
     
    //Check if file exists
-   if((BestaatDeFile(argv[1])) < 0){
-       printf("Geef een geldige file op\n");
-       exit(-1);
-   }
+   //if((BestaatDeFile(argv[1])) < 0){
+     //  printf("Geef een geldige file op\n");
+       //exit(-1);
+   //}
     
    //open file
 //   if((OpenBestand(argv[1])) < 0){

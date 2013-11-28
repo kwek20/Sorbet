@@ -178,27 +178,27 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         strcat(buffer, bestandsnaam);
     } else {
         int owntime;
-        //if ((owntime = modifiedTime(bestandsnaam)) < time){
+        if ((owntime = modifiedTime(bestandsnaam)) < time){
             //old
-            //sendPacket(*sockfd, STATUS_OLD, NULL);
+            sendPacket(*sockfd, STATUS_OLD, NULL);
+            //sendPacket(*sockfd, STATUS_NEW, NULL);
+
+            sprintf(buffer, "%i", STATUS_NEW);
+            strcat(buffer, ":");
+            strcat(buffer, bestandsnaam);
+
+        } else if (owntime > time){
+            //newer  
             sendPacket(*sockfd, STATUS_NEW, NULL);
 
             sprintf(buffer, "%i", STATUS_OLD);
             strcat(buffer, ":");
             strcat(buffer, bestandsnaam);
-
-//        } else if (owntime > time){
-//            //newer  
-//            sendPacket(*sockfd, STATUS_NEW, NULL);
-//
-//            sprintf(buffer, "%i", STATUS_OLD);
-//            strcat(buffer, ":");
-//            strcat(buffer, bestandsnaam);
-//        } else {
-//            //same
-//            printf("ze zijn gelijk !!\n");
-//            return MOOI;
-//        }
+        } else {
+            //same
+            printf("ze zijn gelijk !!\n");
+            return MOOI;
+        }
     }
     
     switchResult(sockfd, buffer);
