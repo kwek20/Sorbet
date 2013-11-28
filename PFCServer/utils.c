@@ -18,9 +18,9 @@ int bestandfd;
  */
 int OpenBestand(char* bestandsnaam){
     if((bestandfd = open(bestandsnaam, O_RDONLY)) < 0){
-        return -1;
+        return STUK;
     }
-    return 0;
+    return MOOI;
 }
 
 /*
@@ -29,10 +29,10 @@ int OpenBestand(char* bestandsnaam){
 int BestaatDeFile(char* fileName){
     if(access(fileName, F_OK) < 0) {
         // Bestand bestaat niet op schijf van client
-        return -1;
+        return STUK;
     } else {
         // Bestand bestaat op schijf van client
-        return 0;
+        return MOOI;
     }
 }
 
@@ -46,12 +46,11 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     
     if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
         perror("Receive metadata OK error");
-        return -1;
+        return STUK;
     }
     
     if((OpenBestand(bestandsnaam)) < 0){return -1;}
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
-
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
@@ -59,60 +58,58 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     while((readCounter = read(bestandfd, buffer, BUFFERSIZE)) > 0){
         if((send(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("Send file error");
-            return -1;
+            return STUK;
         }
         
         if((recv(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("Receive metadata OK error");
-            return -1;
+            return STUK;
         }
         
         if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
     }
     if(readCounter < 0){
-        return -1;
+        return STUK;
     }
-
     /*
      * Bestand klaar met versturen. Geef dit aan aan server doormiddel van 101:EOF
      */
     
     sprintf(statusCode, "%d", STATUS_EOF);
-    
     strcpy(buffer,statusCode);
-
+    
     if((send(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Send 101 error");
-        return -1;
+        return STUK;
     }
-
+    
     if((recv(*sockfd, buffer, strlen(buffer), 0)) < 0) {
         perror("Receive OK error");
-        return -1;
+        return STUK;
     }
     
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
-
+    
     printf("EOF verstuurd en ok ontvangen. \n");
     close(bestandfd);
-    return 0;
+    return MOOI;
 }
 
-int FileTransferReceive(int* sockfd, char* bestandsnaam){
+int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
     file = open(bestandsnaam, O_WRONLY | O_CREAT, 0666);
     if (file < 0){
         perror("open");
-        return -1;
+        return STUK;
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
     
     for ( ;; ){
-        if ((rec = recv(*sockfd, buffer, sizeof(buffer),0)) < 0){
-            return -1;
+        if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
+            return STUK;
         } else if (rec == 0){
-            return 0;
+            return MOOI;
         } else {
             if (rec < 50){
                 //want to stop?
@@ -132,8 +129,9 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam){
             memset(buffer, 0, sizeof(buffer));
         }
     }
+    changeModTime(bestandsnaam, time);
     close(file);
-    return 1;
+    return MOOI;
 }
 
 /**
@@ -148,35 +146,39 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     char *buffer = malloc(1);
     
     if ((file = open(bestandsnaam, O_RDONLY, 0666)) < 0){
-        sendPacket(*sockfd, STATUS_OLD, NULL);
+        sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
         
         sprintf(buffer, "%i", STATUS_CR);
         strcat(buffer, ":");
         strcat(buffer, bestandsnaam);
+        strcat(buffer, ":");
+        strcat(buffer, "0");
     } else {
         int owntime;
         if ((owntime = modifiedTime(bestandsnaam)) < time){
             //own file older
-            sendPacket(*sockfd, STATUS_OLD, NULL);
+            sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
             //sendPacket(*sockfd, STATUS_NEW, NULL);
 
             sprintf(buffer, "%i", STATUS_NEW);
             strcat(buffer, ":");
             strcat(buffer, bestandsnaam);
-
+            strcat(buffer, ":");
+            strcat(buffer, timeleft);
         } else if (owntime > time){
             //own file newer  
-            sendPacket(*sockfd, STATUS_NEW, NULL);
+            sendPacket(*sockfd, STATUS_NEW, bestandsnaam, toString(owntime), NULL);
 
             sprintf(buffer, "%i", STATUS_OLD);
             strcat(buffer, ":");
             strcat(buffer, bestandsnaam);
         } else {
             //same
+            sendPacket(*sockfd, STATUS_SAME, NULL);
             return MOOI;
         }
     }
-    
+    close(file);
     if (waitForOk(*sockfd) == MOOI){
         return switchResult(sockfd, buffer);
     } else {
@@ -208,17 +210,14 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     // Wacht op antwoord modifycheck van server
     if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
         //printf("%s(%i)\n", buffer, readCounter);
-        perror("Receive modififycheck result error1");
-        return -1;
+        perror("Receive modififycheck result error");
+        return STUK;
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
-    
-    strcat(buffer,":");
-    strcat(buffer,bestandsnaam);
     switchResult(sockfd, buffer);
     
     free(buffer);
-    return 0;
+    return MOOI;
 }
 
 /**
@@ -301,4 +300,15 @@ int waitForOk(int fd){
     
     if(switchResult(&fd, buffer) != STATUS_OK){return STUK;}
     return MOOI;
+}
+
+int changeModTime(char *bestandsnaam, int time){
+    struct timeval t[2];
+    t[0].tv_sec = time;
+    t[0].tv_usec = 0;
+    
+    t[1].tv_sec = time;
+    t[1].tv_usec = 0;
+    
+    return utimes(bestandsnaam, t);
 }

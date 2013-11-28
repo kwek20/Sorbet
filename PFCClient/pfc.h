@@ -47,6 +47,7 @@
 // 4xx Server naar client requests
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is
 #define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is
+#define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server
 
 
 int pfcClient(char** argv);
@@ -54,7 +55,7 @@ int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer(int* sockfd);
 int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferReceive(int* sockfd, char* bestandsnaam);
+int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
@@ -62,9 +63,11 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 int transform(char *text, char** to);
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
+int waitForOk(int fd);
 
+int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
+
 char *toString(int number);
 void getEOF(char *to);
 
-int waitForOk(int fd);

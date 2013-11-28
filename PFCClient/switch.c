@@ -22,22 +22,18 @@ int switchResult(int* sockfd, char* buffer){
         printf("error with statusCode\n");
         return -1;
     }
-    printf("received packet: %i, info: %s(%i)\n", statusCode, buffer, strlen(buffer));
+    printf("received packet: %i(%i)\n", statusCode, strlen(buffer));
     
     switch(statusCode) {
         case STATUS_OK:      return STATUS_OK;
         case STATUS_EOF:     return STATUS_EOF;
         
-        case STATUS_CR:      return FileTransferReceive(sockfd, to[1]);
-        //case STATUS_CR:      return FileTransferRecieve();
+        case STATUS_CR:      return FileTransferReceive(sockfd, to[1], atoi(to[2]));
         case STATUS_MODCHK:  return ModifyCheckServer(sockfd, to[1], to[2]); //server
         case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
-        case STATUS_NEW:     return FileTransferReceive(sockfd, to[1]);
-        
-        
+        case STATUS_NEW:     return FileTransferReceive(sockfd, to[1], atoi(to[2]));
+        default:             return MOOI;
     }
-    printf("stuk!\n");
-    return STUK;
 }
 
 /**
