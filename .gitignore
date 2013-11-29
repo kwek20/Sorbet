@@ -6,3 +6,5 @@
 /PFCServer/build/
 /PFCServer/dist/
 /PFCServer/nbproject/
+/PFCServer/server
+/PFCClient/client
