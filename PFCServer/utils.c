@@ -2,6 +2,7 @@
  * File:   utils.c
  * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
  *
+ * Deze file bevat code die door zowel de client als server gebruikt kan worden.
  */
 
 /*
@@ -11,10 +12,14 @@
 #include "pfc.h"
 
 /*Global vars*/
-int bestandfd;
+int bestandfd; //moet nog worden verwerkt in functies zodat dit niet nodig is
 
-/*
- * Functie open bestand
+/**
+ * Functie OpenBestand
+ * Hier wordt een bestand geopend.
+ * 
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @return 0 if succesvol. -1 if failed.
  */
 int OpenBestand(char* bestandsnaam){
     if((bestandfd = open(bestandsnaam, O_RDONLY)) < 0){
@@ -25,9 +30,11 @@ int OpenBestand(char* bestandsnaam){
 
 /*
  * Functie controleerd of bestand bestaat
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @return 0 if succesvol. -1 if failed.
  */
-int BestaatDeFile(char* fileName){
-    if(access(fileName, F_OK) < 0) {
+int BestaatDeFile(char* bestandsnaam){
+    if(access(bestandsnaam, F_OK) < 0) {
         // Bestand bestaat niet op schijf van client
         return STUK;
     } else {
@@ -38,6 +45,9 @@ int BestaatDeFile(char* fileName){
 
 /*
  * Functie geef aan dat je een bestand wilt uploaden
+ * @param sockfd de socket waar geluisterd/verzonden wordt
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     
@@ -95,6 +105,13 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     return MOOI;
 }
 
+/**
+ * Functie om bestanden te ontvangen
+ * @param sockfd socket waarop geluisterd/verzonden wordt
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @param time de tijd die het nieuwe bestand moet krijgen als modify datum
+ * @return 0 if succesvol. -1 if failed.
+ */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
@@ -135,10 +152,10 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
 }
 
 /**
- * 
- * @param sockfd
- * @param bestandsnaam
- * @param timeleft
+ * Functie voor de server om te kijken of het bestand op de server nieuwer is of op de client
+ * @param sockfd socket waarop gecontroleerd moet worden
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @param timeleft de modify datum van het bestand van de client
  * @return 0 if succesvol. -1 if failed. 
  */
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
@@ -191,8 +208,8 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
 /**
  * Functie verstuurt de modify-date van een bestand naar de server en
  * krijgt terug welke de nieuwste is.
- * @param sockfd
- * @param bestandsnaam 
+ * @param sockfd socket waarop gecontroleerd moet worden
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
  * @return 0 if succesvol. -1 if failed.
  */
 int ModifyCheckClient(int* sockfd, char* bestandsnaam){
@@ -216,7 +233,6 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     sendPacket(*sockfd, STATUS_OK, NULL);
     switchResult(sockfd, buffer);
     
-    free(buffer);
     return MOOI;
 }
 
@@ -258,6 +274,11 @@ int sendPacket(int fd, int packet, ...){
     return MOOI;
 }
 
+/**
+ * Functie om nummer om te zetten naar string
+ * @param number integer nummer
+ * @return de meegegeven integer als string
+ */
 char *toString(int number){
     char *nr = malloc(10);
     sprintf(nr, "%i", number);
@@ -277,8 +298,8 @@ void getEOF(char *to){
 }
 
 /**
- * 
- * @param bestandsnaam 
+ * returned de tijd van een file vanaf 1970
+ * @param bestandsnaam de bestandsnaam waar de tijd van gecontroleerd moet worden
  * @return sec vanaf 1970 of -1
  */
 int modifiedTime(char *bestandsnaam){
@@ -290,18 +311,27 @@ int modifiedTime(char *bestandsnaam){
     
     return eigenschappen.st_mtim.tv_sec;
 }
-
-int waitForOk(int fd){
+/**
+ * Functie die wacht op een OK , of ander pakket, en terug geeft of dit een ok is of niet
+ * @param sockfd de socket waarop de functie een ok verwacht
+ * @return 0 if succesvol. -1 if failed.
+ */
+int waitForOk(int sockfd){
     char *buffer = malloc(1);
-    if((recv(fd, buffer, BUFFERSIZE, 0)) < 0) {
+    if((recv(sockfd, buffer, BUFFERSIZE, 0)) < 0) {
         perror("Receive OK error");
         return STUK;
     }
     
-    if(switchResult(&fd, buffer) != STATUS_OK){return STUK;}
+    if(switchResult(&sockfd, buffer) != STATUS_OK){return STUK;}
     return MOOI;
 }
-
+/**
+ * Functie veranderd de modify/access datum van een bestand
+ * @param bestandsnaam naam van het bestand dat aangepast moet worden
+ * @param tijd de tijd die de modify/access datum moet worden van het bestand
+ * @return 0 if succesvol. -1 if failed.
+ */
 int changeModTime(char *bestandsnaam, int time){
     struct timeval t[2];
     t[0].tv_sec = time;
@@ -313,6 +343,11 @@ int changeModTime(char *bestandsnaam, int time){
     return utimes(bestandsnaam, t);
 }
 
+/**
+ * Functie om een array te printen
+ * @param length de lengte van de array
+ * @param array de array met strings
+ */
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
@@ -321,6 +356,11 @@ void printArray(int length, char *array[]){
     puts("\n");
 }
 
+/**
+ * Functie om input te ontvangen
+ * @param max het maximaal aantal chars dat mag worden meegegeven via fgets
+ * @return return van de char array
+ */
 char* getInput(int max){
     char *temp = malloc(max);
     fgets(temp,max,stdin);
@@ -328,6 +368,9 @@ char* getInput(int max){
     return temp;
 }
 
+/**
+ * deze functie print het begin scherm
+ */
 void printStart(void){
     system("clear");
     puts("-----------------------------");

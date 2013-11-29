@@ -4,8 +4,11 @@
  *
  */
 
-/*
+/**
  * Switch voor het maken van een structuur voor status-codes
+ * @param sockfd socket waarop gecontroleerd moet worden
+ * @param buffer data in string format
+ * @return 0 if succesvol. -1 if failed.
  */
 
 #include "pfc.h"
