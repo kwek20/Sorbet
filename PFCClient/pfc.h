@@ -65,7 +65,7 @@ int transformWith(char *text, char** to, char *delimit);
 
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
-int waitForOk(int fd);
+int waitForOk(int sockfd);
 
 int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
