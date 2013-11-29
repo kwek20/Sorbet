@@ -5,7 +5,7 @@
  * Created on November 19, 2013, 10:37 AM
  */
 
-#include "../PFCClient/pfc.h"
+#include "pfc.h"
 
 #include <memory.h>
 #include <pthread.h>
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     pthread_t cmd;
     pthread_create(&cmd, NULL, (void*)command, NULL);
     
-    printf("Private file cloud server ready!\nWere listening for clients on port \"%i\".\n", NETWERKPOORT);
+    printf("Private file cloud server ready!\nWe're listening for clients on port \"%i\".\n", NETWERKPOORT);
     for ( ;; ){
         //wait for free sem
         sem_wait(&client_wait);
@@ -119,7 +119,7 @@ void create(int *sock){
 
     //print information
     printf("\n-------------\nConnection accepted with client: %i\n", fd);
-    printf("Ip nummer: %s\n", ip);
+    printf("IP Address: %s\n", ip);
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
 
@@ -171,7 +171,7 @@ void SIGexit(int sig){
 }
 
 void quit(){
-    puts("\nWere leaving! Bye :(");
+    puts("\nStopping server.....");
     close(sock);
     exit(MOOI);
 }
@@ -230,7 +230,7 @@ void help(char **args, int amount){
         } else if (strcasecmp(args[1], "numcli") == MOOI){
             printf("numcli -> Will show you the current amount of online clients\n");
         } else if (strcasecmp(args[1], "exit") == MOOI){
-            printf("exit -> This will gracefully stop the server and its active connections\n");
+            printf("exit -> This will gracefully stop the server and it's active connections\n");
         }
     } else {
         printf("Available commands: help, numcli, exit\n");
@@ -238,5 +238,5 @@ void help(char **args, int amount){
 }
 
 void numcli(){
-    printf("Currently online clients: %i.\n", cur_cli);
+    printf("Currently available threads: %i.\n", cur_cli);
 }

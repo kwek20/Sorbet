@@ -36,26 +36,15 @@ int main(int argc, char** argv) {
  */
 int pfcClient(char** argv){
    int sockfd;
-    
-   //Check if file exists
-   //if((BestaatDeFile(argv[1])) < 0){
-     //  printf("Geef een geldige file op\n");
-       //exit(-1);
-   //}
-    
-   //open file
-//   if((OpenBestand(argv[1])) < 0){
-//       exit(-1);
-//   }
 
    if((ServerGegevens(argv[2])) < 0){
-       exit(-1);
+       exit(EXIT_FAILURE);
    }
    
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
        perror("Create socket error:");
-       exit(-1);
+       exit(EXIT_FAILURE);
    }
    
    printStart();
@@ -65,7 +54,6 @@ int pfcClient(char** argv){
        printf("error bij ModifyCheckClient\n");
        exit(EXIT_FAILURE);
    }
-   //FileTransferSend(&sockfd, argv[1]);
    
    return 0;
 }
@@ -111,7 +99,7 @@ int ConnectNaarServer(int* sockfd){
         return -1;
     }
 
-    printf("connectie succesvol\n");
+    printf("Connectie succesvol\n");
     return 0;
 }
 
