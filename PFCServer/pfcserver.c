@@ -13,7 +13,9 @@
 
 void setupSIG();
 void SIGexit(int sig);
+
 void quit();
+void stopClient(int fd);
 
 void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
@@ -21,9 +23,13 @@ struct sockaddr_in getServerAddr(int poort);
 void command(void);
 void numcli(void);
 void help(char **args, int amount);
+void clientinfo(char **args, int amount);
+int printClientInfo(struct sockaddr_in client, int number);
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
+
+struct sockaddr_in *clients; 
 
 /*
  * Main function, starts all threads
@@ -46,6 +52,7 @@ int main(int argc, char** argv) {
     
     //make server data
     struct sockaddr_in server_addr = getServerAddr(poort);
+    clients = (struct sockaddr_in*) malloc(MAX_CLI*sizeof(struct sockaddr_in));
     
     //make a socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -119,6 +126,8 @@ void create(int *sock){
     ip = inet_ntoa(client_addr.sin_addr);
     int poort = htons(client_addr.sin_port);
 
+    clients[fd-4] = client_addr;
+    
     //print information
     printf("\n-------------\nConnection accepted with client: %i\n", fd);
     printf("IP Address: %s\n", ip);
@@ -146,10 +155,7 @@ void create(int *sock){
             }
         }
     }
-
-    printf("Client stopped\n");
-    close(fd);
-    cur_cli--;
+    stopClient(fd);
 }
 
 /**
@@ -173,6 +179,13 @@ void quit(){
     puts("\nStopping server.....");
     close(sock);
     exit(MOOI);
+}
+
+void stopClient(int fd){
+    printf("Client stopped\n");
+    memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
+    close(fd);
+    cur_cli--;
 }
 
 /**
@@ -214,6 +227,8 @@ void command(void){
             help(args, amount);
         } else if(strcasecmp(args[0], "numcli") == MOOI){
             numcli();
+        } else if(strcasecmp(args[0], "clientinfo") == MOOI){
+            clientinfo(args, amount);
         } else if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
             break;
         } else {
@@ -222,6 +237,42 @@ void command(void){
     }
     
     quit();
+}
+
+void clientinfo(char **args, int amount){
+    //data for later usage
+    int i, j = 0;
+    if (amount > 1){
+        i = atoi(args[1]);
+        if (clients[i].sin_port != 0){
+            printClientInfo(clients[i], i);
+        }
+    }
+    
+    for (i=0; i<MAX_CLI; i++){
+        if (clients[i].sin_port != 0){
+            j = 1;
+            printClientInfo(clients[i], i+1);
+        }
+    }
+    
+    if (j == 0){
+        printf("No clients connected\n");
+    }
+}
+
+int printClientInfo(struct sockaddr_in client, int number){
+    if (client.sin_port != 0){
+        char *ip;
+        ip = inet_ntoa(client.sin_addr);
+
+        printf("Info from client %i\n", number);
+        printf("- IP Address: %s\n", ip);
+        printf("- Port: %i\n", htons(client.sin_port));
+        
+        return MOOI;
+    }
+    return STUK;
 }
 
 void help(char **args, int amount){
@@ -236,7 +287,7 @@ void help(char **args, int amount){
             printf("aliases -> quit, stop, exit\n");
         }
     } else {
-        printf("Available commands: help, numcli, exit\n");
+        printf("Available commands: help, numcli, exit, clientinfo\n");
     }
 }
 

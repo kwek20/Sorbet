@@ -54,10 +54,6 @@ int pfcClient(char** argv){
        printf("error bij ModifyCheckClient\n");
        exit(EXIT_FAILURE);
    }
-   
-   for ( ;; ){
-       wait(5);
-   }
 }
 /**
  * Functie serv_addr vullen
