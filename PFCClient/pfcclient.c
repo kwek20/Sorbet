@@ -55,7 +55,9 @@ int pfcClient(char** argv){
        exit(EXIT_FAILURE);
    }
    
-   return 0;
+   for ( ;; ){
+       wait(5);
+   }
 }
 /**
  * Functie serv_addr vullen

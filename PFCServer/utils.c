@@ -270,7 +270,7 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    printf("send packet: %i info:%s(%i)\n", packet, info, bytes);
+    printf("Send packet: %i info:%s(%i)\n", packet, info, bytes);
     return MOOI;
 }
 

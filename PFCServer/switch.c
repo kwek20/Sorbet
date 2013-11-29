@@ -1,6 +1,6 @@
 /* 
  * File:   switch.c
- * Author: Bartjan Zondag & Kevin Rosendaal
+ * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
  *
  */
 
@@ -25,7 +25,7 @@ int switchResult(int* sockfd, char* buffer){
         printf("error with statusCode\n");
         return -1;
     }
-    printf("received packet: %i(%i)\n", statusCode, strlen(buffer));
+    printf("Received packet: %i(%i)\n", statusCode, strlen(buffer));
     
     switch(statusCode) {
         case STATUS_OK:      return STATUS_OK;

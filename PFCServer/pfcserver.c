@@ -5,8 +5,7 @@
  * Created on November 19, 2013, 10:37 AM
  */
 
-#include "pfc.h"
-
+#include "../PFCClient/pfc.h"
 #include <memory.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -20,8 +19,8 @@ void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
 
 void command(void);
+void numcli(void);
 void help(char **args, int amount);
-void numcli();
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
@@ -106,6 +105,9 @@ void create(int *sock){
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];
     
+    //open sem for new thread
+    sem_post(&client_wait);
+    
     //accept connection
     socklen_t size = sizeof(client_addr);
     if ((fd = accept(*sock, (struct sockaddr *)&client_addr, &size)) < 0){
@@ -148,9 +150,6 @@ void create(int *sock){
     printf("Client stopped\n");
     close(fd);
     cur_cli--;
-    
-    //open sem for new thread
-    sem_post(&client_wait);
 }
 
 /**
@@ -208,11 +207,14 @@ void command(void){
         command = getInput(50);
         amount = transformWith(command, args, " ");
         if (amount < 1) continue;
+        
         if (strcasecmp(args[0], "help") == MOOI){
+            help(args, amount);
+        } else if (strcasecmp(args[0], "info") == MOOI){
             help(args, amount);
         } else if(strcasecmp(args[0], "numcli") == MOOI){
             numcli();
-        } else if(strcasecmp(args[0], "exit") == MOOI){
+        } else if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
             break;
         } else {
             help(args, amount);
@@ -229,14 +231,15 @@ void help(char **args, int amount){
             printf("help -> Show all the commands in a list\n");
         } else if (strcasecmp(args[1], "numcli") == MOOI){
             printf("numcli -> Will show you the current amount of online clients\n");
-        } else if (strcasecmp(args[1], "exit") == MOOI){
-            printf("exit -> This will gracefully stop the server and it's active connections\n");
+        } else if (strcasecmp(args[1], "exit") == MOOI || strcasecmp(args[1], "stop") == MOOI || strcasecmp(args[1], "quit") == MOOI){
+            printf("%s -> This will gracefully stop the server and it's active connections\n", args[1]);
+            printf("aliases -> quit, stop, exit\n");
         }
     } else {
         printf("Available commands: help, numcli, exit\n");
     }
 }
 
-void numcli(){
+void numcli(void){
     printf("Currently available threads: %i.\n", cur_cli);
 }
