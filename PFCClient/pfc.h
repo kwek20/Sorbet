@@ -35,19 +35,21 @@
 
 // 1xx OK en gerelateerde statussen
 #define STATUS_OK  100 // OK (bevestigingscode)
-#define STATUS_EOF 101 // End-of-file
+#define STATUS_EOF 101 // End-of-file.
 // 2xx Errors en gerelateerde statussen
-#define STATUS_CL  200 // Verbinding verbroken
-#define STATUS_FC  201 // Bestand corrupt
-#define STATUS_WPN 202 // Verkeerde packet nummer
-#define STATUS_CNA 203 // Verbinding niet toegestaan
+#define STATUS_CL  200 // Verbinding verbroken.
+#define STATUS_FC  201 // Bestand corrupt.
+#define STATUS_WPN 202 // Verkeerde packet nummer.
+#define STATUS_CNA 203 // Verbinding niet toegestaan.
 // 3xx Client naar server requests
-#define STATUS_CR  300 // Client vraagt bestandsoverdracht aan
-#define STATUS_MODCHK  301 // Client vraagt aan de server of er nieuwe/gewijzigde bestanden zijn.
+#define STATUS_CR  300 // Client vraagt bestandsoverdracht aan.
+#define STATUS_MODCHK 301 // Client vraagt aan de server of er nieuwe/gewijzigde bestanden zijn.
+#define STATUS_AUTH 302 //Client stuurt credentials naar server.
 // 4xx Server naar client requests
-#define STATUS_OLD 401 //Server geeft aan dat file op server ouder is
-#define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is
-#define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server
+#define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
+#define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is.
+#define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server.
+#define STATUS_AUTHOK 404 //Server verteld de client dat de authenticatie gelukt is.
 
 
 int pfcClient(char** argv);
