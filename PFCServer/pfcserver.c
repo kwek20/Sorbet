@@ -323,12 +323,7 @@ void numcli(void){
 
 void initDatabase()
  {
-     sqlite3 *db;
-     int rc;
-     rc = 0;
-    
-    connectDB(rc, db);
-    createDB(rc, db);
+    connectDB();
  }
 
 /**

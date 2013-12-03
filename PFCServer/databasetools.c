@@ -29,55 +29,37 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
    return 0;
 }
 
-int connectDB(int rc, sqlite3 *db)
+int connectDB()
 {
-    /* Open database */
-    rc = sqlite3_open("sorbetDB.db", &db);
-    
-    if( rc )
-    {
-      fprintf(stderr, "Kan de database niet openen: %s\n", sqlite3_errmsg(db));
-      exit(0);
-    }
-    else
-    {
-      fprintf(stderr, "Database succesvol geopend.\n");
-    }
-    return 0;
-    
-    //
-}
-
-int createDB(int rc, sqlite3 *db)
-{
-    char *sql;
-    
-    /* Create SQL statement */
-   sql = "CREATE TABLE USERS("  \
-         "ID INT PRIMARY KEY     NOT NULL AUTOINCREMENT," \
-         "NAME           TEXT    NOT NULL," \
-         "PASSWORD       TEXT    NOT NULL);";
-   
-    updateDB(rc, db, sql);
-    return 0;
-}
-
-int updateDB(int rc, sqlite3 *db, char *sql)
-{
-    
+   sqlite3 *db;
    char *zErrMsg = 0;
-   
-    /* Execute SQL statement */
+   int  rc;
+   char *sql;
+
+   /* Open database */
+   rc = sqlite3_open("test.db", &db);
+   if( rc ){
+      fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+      exit(0);
+   }else{
+      fprintf(stdout, "Opened database successfully\n");
+   }
+
+   /* Create SQL statement */
+   sql = "CREATE TABLE USERS("  \
+          "ID INT PRIMARY KEY     NOT NULL AUTOINCREMENT," \
+          "NAME           TEXT    NOT NULL," \
+          "PASSWORD       TEXT    NOT NULL);";
+
+   /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-   if( rc != SQLITE_OK )
-   {
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
+   if( rc != SQLITE_OK ){
+   fprintf(stderr, "SQL error: %s\n", zErrMsg);
       sqlite3_free(zErrMsg);
+   }else{
+      fprintf(stdout, "Table created successfully\n");
    }
-   else
-   {
-      fprintf(stdout, "Tabel gemaakt\n");
-   }
+   sqlite3_close(db);
    return 0;
 }
 
@@ -88,7 +70,7 @@ int selectDB(int rc)
 
 int closeDB(sqlite3 *db)
 {
-    sqlite3_close(db);
+    //sqlite3_close(db);
     return 0;
 }
 
