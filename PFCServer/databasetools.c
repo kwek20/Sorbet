@@ -21,7 +21,8 @@
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
    int i;
-   for(i=0; i<argc; i++){
+   for(i=0; i<argc; i++)
+   {
       printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
    printf("\n");
@@ -46,7 +47,7 @@ int connectDB(int rc, sqlite3 *db)
     //
 }
 
-int createDB()
+int createDB(int rc, sqlite3 *db, char *zErrMsg)
 {
     char *sql;
     
@@ -59,6 +60,8 @@ int createDB()
          "CREATE TABLE PATHS("   \
          "ID INT PRIMARY KEY     NOT NULL,"  \
          "PATH        CHAR(30)   NOT NULL)";
+   
+    updateDB(rc, db, sql, &zErrMsg);
 }
 
 int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg)
@@ -86,7 +89,7 @@ int closeDB(sqlite3 *db)
     sqlite3_close(db);
 }
 
-int hashPassword(char *password)
+int hashPassword()
 {
     char *password;
     //Crypto
@@ -100,12 +103,12 @@ int hashPassword(char *password)
 
 int createUser(int rc)
 {
-    updateDB(rc);
+    //updateDB(rc);
 }
 
 int removeUser(int rc)
 {
-    updateDB(rc);
+    //updateDB(rc);
 }
 
 int checkCredentials()
@@ -124,5 +127,5 @@ int sendCredentials()
 
 int writePasswordToLocalDB(int rc)
 {
-    updateDB(rc);
+    //updateDB(rc);
 }

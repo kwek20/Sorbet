@@ -23,6 +23,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <stdarg.h>
+#include <sqlite3.h>
 
 
 #define BUFFERSIZE 4096
@@ -85,7 +86,7 @@ int createDB();
 int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg);
 int selectDB(int rc);
 int closeDB(sqlite3 *db);
-int hashPassword(char *password);
+int hashPassword();
 int createUser(int rc);
 int removeUser(int rc);
 int checkCredentials();

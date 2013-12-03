@@ -227,6 +227,8 @@ void command(void){
             help(args, amount);
         } else if(strcasecmp(args[0], "numcli") == MOOI){
             numcli();
+        } else if(strcasecmp(args[0], "initdb") == MOOI){
+            initDatabase();
         } else if(strcasecmp(args[0], "clientinfo") == MOOI){
             clientinfo(args, amount);
         } else if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
@@ -300,4 +302,7 @@ void initDatabase()
     sqlite3 *db;
     char *zErrMsg = 0;
     int rc;
+    
+    connectDB(rc, db);
+    createDB(rc, db, &zErrMsg);
 }
