@@ -43,6 +43,7 @@ int connectDB(int rc, sqlite3 *db)
     {
       fprintf(stderr, "Database succesvol geopend.\n");
     }
+    return 0;
     
     //
 }
@@ -62,6 +63,7 @@ int createDB(int rc, sqlite3 *db, char *zErrMsg)
          "PATH        CHAR(30)   NOT NULL)";
    
     updateDB(rc, db, sql, &zErrMsg);
+    return 0;
 }
 
 int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg)
@@ -77,22 +79,25 @@ int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg)
    {
       fprintf(stdout, "Tabel gemaakt\n");
    }
+   return 0;
 }
 
 int selectDB(int rc)
 {
-    
+    return 0;
 }
 
 int closeDB(sqlite3 *db)
 {
     sqlite3_close(db);
+    return 0;
 }
 
 int hashPassword()
 {
     char *password;
     //Crypto
+    return 0;
 }
 
 // De onderstaande functies worden later verplaast
@@ -104,16 +109,19 @@ int hashPassword()
 int createUser(int rc)
 {
     //updateDB(rc);
+    return 0;
 }
 
 int removeUser(int rc)
 {
     //updateDB(rc);
+    return 0;
 }
 
 int checkCredentials()
 {
     // Password == selectDB();
+    return 0;
 }
 
 /*
@@ -122,10 +130,11 @@ int checkCredentials()
 
 int sendCredentials()
 {
-    
+    return 0;
 }
 
 int writePasswordToLocalDB(int rc)
 {
     //updateDB(rc);
+    return 0;
 }
