@@ -48,7 +48,7 @@ int connectDB(int rc, sqlite3 *db)
     //
 }
 
-int createDB(int rc, sqlite3 *db, char *zErrMsg)
+int createDB(int rc, sqlite3 *db)
 {
     char *sql;
     
@@ -56,18 +56,17 @@ int createDB(int rc, sqlite3 *db, char *zErrMsg)
    sql = "CREATE TABLE USERS("  \
          "ID INT PRIMARY KEY     NOT NULL AUTOINCREMENT," \
          "NAME           TEXT    NOT NULL," \
-         "PASSWORD       TEXT    NOT NULL);" \
-         
-         "CREATE TABLE PATHS("   \
-         "ID INT PRIMARY KEY     NOT NULL,"  \
-         "PATH        CHAR(30)   NOT NULL)";
+         "PASSWORD       TEXT    NOT NULL);";
    
-    updateDB(rc, db, sql, &zErrMsg);
+    updateDB(rc, db, sql);
     return 0;
 }
 
-int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg)
+int updateDB(int rc, sqlite3 *db, char *sql)
 {
+    
+   char *zErrMsg = 0;
+   
     /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK )

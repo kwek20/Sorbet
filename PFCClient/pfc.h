@@ -89,7 +89,7 @@ int ConnectRefused(int* sockfd);
 static int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int connectDB(int rc, sqlite3 *db);
 int createDB();
-int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg);
+int updateDB(int rc, sqlite3 *db, char *sql);
 int selectDB(int rc);
 int closeDB(sqlite3 *db);
 int hashPassword();
