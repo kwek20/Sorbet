@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
  */
 void create(int *sock){
     //init vars
-    int result = 0, fd, rec, i;
+    int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];
     char** to = malloc(1);
@@ -136,7 +136,7 @@ void create(int *sock){
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
     
-    //Login
+    //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
         printf("at login\n");
         if(recv(fd, buffer, BUFFERSIZE, 0) < 0){
@@ -144,11 +144,12 @@ void create(int *sock){
             return;
         }
         transform(buffer, to);
-        printf("to[1]: %s | to[2]: %s\n",to[1],to[2]);
-        if(ReceiveCredentials(to[1], to[2]) == MOOI){
+        printf("to[1]: %s - to[2]: %s\n",to[1],to[2]);
+        if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK);
             break;
         }
+        printf("recvCred: %i\n",temp);
         if(i < 2){
             sendPacket(fd, STATUS_AUTHFAIL);
         }else{
@@ -157,6 +158,7 @@ void create(int *sock){
             return;
         }
     }
+    //End of Login
     
     //loop forever until client stops
     for ( ;; ){
@@ -335,13 +337,16 @@ void initDatabase()
  */
 
 int ReceiveCredentials(char* username, char* password){
-    
-    if(strcmp(username,"test") != 0){
+    int temp = 0;
+    if((temp = strcmp(username,"test\n")) != 0){
+        printf("username fail temp: %i\n",temp);
         return STUK;
-        if(strcmp(password,"1234") != 0){
+    }else{
+        if((temp = strcmp(password,"1234\n")) != 0){
+            printf("password fail temp: %i\n",temp);
             return STUK;
         }
     }
-    
+    printf("username and password OK\n");
     return MOOI;
 }

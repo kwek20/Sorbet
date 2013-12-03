@@ -51,7 +51,7 @@ int pfcClient(char** argv){
    
    printStart();
 
-   ConnectNaarServer(&sockfd);
+   if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(ModifyCheckClient(&sockfd, argv[1]) < 0){
        printf("error bij ModifyCheckClient\n");
@@ -147,16 +147,25 @@ int SendCredentials(int* sockfd){
      * client verstuurd verzoek om in te loggen (302:username:password)
      * server verstuurd 404 als dit mag of 203 als dit niet mag
      */
-    
+    char *username, *password;
     char buffer[BUFFERSIZE];
-    char* username = "test123";
-    char* password = "1234";
     int sR = 0; //switchResult
-    
-    printf("druk enter om username en wachtwoord te sturen\n");
-    getchar();
+
     
     for(;;){
+        
+        printf("Username: ");
+        fgets(buffer, BUFFERSIZE, stdin);
+        username = malloc(strlen(buffer));
+        strcpy(username,buffer);
+
+        printf("Password: ");
+        fgets(buffer, BUFFERSIZE, stdin);
+        password = malloc(strlen(buffer));
+        strcpy(password,buffer);
+
+        bzero(buffer,BUFFERSIZE);
+        
         sendPacket(*sockfd, STATUS_AUTH, username, password, NULL);
 
         if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
@@ -168,7 +177,7 @@ int SendCredentials(int* sockfd){
         switch(sR){
             case STUK: return STUK;
             case STATUS_AUTHFAIL: printf("Username or Password incorrect\n"); continue;
-            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); getchar(); return MOOI;
+            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); return MOOI;
         }
     }
     
