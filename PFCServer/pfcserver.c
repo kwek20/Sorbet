@@ -321,6 +321,16 @@ void numcli(void){
     printf("Currently available threads: %i.\n", cur_cli);
 }
 
+void initDatabase()
+ {
+     sqlite3 *db;
+     char *zErrMsg = 0;
+     int rc;
+    
+    connectDB(rc, db);
+    createDB(rc, db, &zErrMsg);
+ }
+
 /**
  * Deze functie zal controleren of de gebruikersnaam en het wachtwoord van de user kloppen
  * @param sockfd

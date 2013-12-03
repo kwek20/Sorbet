@@ -82,9 +82,9 @@ void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
 
-<<<<<<< HEAD
+
 int ConnectRefused(int* sockfd);
-=======
+
 //DB - Will be edited
 static int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int connectDB(int rc, sqlite3 *db);
@@ -98,4 +98,3 @@ int removeUser(int rc);
 int checkCredentials();
 int sendCredentials();
 int writePasswordToLocalDB(int rc);
->>>>>>> branch 'master' of https://bartjan@bitbucket.org/teamsorbet/pfc.git
