@@ -7,7 +7,6 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <sqlite3.h>
 #include <string.h>
 
@@ -19,67 +18,30 @@
 
 // ADDED PSEUDOCODE FOR LATER EDITING.
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName){
-   int i;
-   for(i=0; i<argc; i++)
-   {
-      printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-   }
-   printf("\n");
-   return 0;
-}
-
-int connectDB(int rc, sqlite3 *db)
+int main()
 {
-    /* Open database */
-    rc = sqlite3_open("sorbetDB.db", &db);
+    sqlite3 *db;
+    char *ErrMsg = 0;
+    int rec;
     
-    if( rc )
-    {
-      fprintf(stderr, "Kan de database niet openen: %s\n", sqlite3_errmsg(db));
-      exit(0);
-    }
-    else
-    {
-      fprintf(stderr, "Database succesvol geopend.\n");
-    }
+    char *password;
     
-    //
+    connectDB(rec);
+    //......
+    closeDB(db);
 }
 
-int createDB(int rc, sqlite3 *db, char *zErrMsg)
+int connectDB(int rec, sqlite3 *db)
 {
-    char *sql;
-    
-    /* Create SQL statement */
-   sql = "CREATE TABLE USERS("  \
-         "ID INT PRIMARY KEY     NOT NULL AUTOINCREMENT," \
-         "NAME           TEXT    NOT NULL," \
-         "PASSWORD       TEXT    NOT NULL);" \
-         
-         "CREATE TABLE PATHS("   \
-         "ID INT PRIMARY KEY     NOT NULL,"  \
-         "PATH        CHAR(30)   NOT NULL)";
-   
-    updateDB(rc, db, sql, &zErrMsg);
+    rec = sqlite3_open(&db);
 }
 
-int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg)
+int updateDB(int rec)
 {
-    /* Execute SQL statement */
-   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-   if( rc != SQLITE_OK )
-   {
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-   }
-   else
-   {
-      fprintf(stdout, "Tabel gemaakt\n");
-   }
+    rec = sqlite3_exec();
 }
 
-int selectDB(int rc)
+int selectDB(int rec)
 {
     
 }
@@ -89,9 +51,8 @@ int closeDB(sqlite3 *db)
     sqlite3_close(db);
 }
 
-int hashPassword()
+int hashPassword(char *password)
 {
-    char *password;
     //Crypto
 }
 
@@ -101,14 +62,14 @@ int hashPassword()
  * Functies die voor de serverapplicatie bedoeld zijn.
  */
 
-int createUser(int rc)
+int createUser(int rec)
 {
-    //updateDB(rc);
+    updateDB(rec);
 }
 
-int removeUser(int rc)
+int removeUser(int rec)
 {
-    //updateDB(rc);
+    updateDB(rec);
 }
 
 int checkCredentials()
@@ -125,7 +86,7 @@ int sendCredentials()
     
 }
 
-int writePasswordToLocalDB(int rc)
+int writePasswordToLocalDB(int rec)
 {
-    //updateDB(rc);
+    updateDB(rec);
 }
