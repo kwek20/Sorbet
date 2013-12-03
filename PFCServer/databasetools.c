@@ -47,7 +47,7 @@ int connectDB()
 
    /* Create SQL statement */
    sql = "CREATE TABLE USERS("  \
-          "ID INT PRIMARY KEY     NOT NULL AUTOINCREMENT," \
+          "ID INT PRIMARY KEY     NOT NULL," \
           "NAME           TEXT    NOT NULL," \
           "PASSWORD       TEXT    NOT NULL);";
 
