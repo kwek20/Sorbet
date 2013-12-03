@@ -154,18 +154,20 @@ int SendCredentials(int* sockfd){
     
     for(;;){
         
+        bzero(buffer, BUFFERSIZE);
         printf("Username: ");
         fgets(buffer, BUFFERSIZE, stdin);
         username = malloc(strlen(buffer));
         strcpy(username,buffer);
-
+        
+        bzero(buffer, BUFFERSIZE);
         printf("Password: ");
         fgets(buffer, BUFFERSIZE, stdin);
         password = malloc(strlen(buffer));
         strcpy(password,buffer);
 
-        bzero(buffer,BUFFERSIZE);
-        
+        bzero(buffer, BUFFERSIZE);
+        printf("ready to send\n"); //BRORD !!!! WERKT NIET
         sendPacket(*sockfd, STATUS_AUTH, username, password, NULL);
 
         if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {

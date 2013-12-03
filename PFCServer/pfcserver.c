@@ -111,7 +111,7 @@ void create(int *sock){
     //init vars
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
-    char buffer[BUFSIZ];
+    char buffer[BUFFERSIZE];
     char** to = malloc(1);
     
     //open sem for new thread
@@ -139,6 +139,7 @@ void create(int *sock){
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
         printf("at login\n");
+        bzero(buffer, BUFFERSIZE);
         if(recv(fd, buffer, BUFFERSIZE, 0) < 0){
             perror("recv error");
             return;
