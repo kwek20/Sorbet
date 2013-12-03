@@ -28,15 +28,25 @@ int switchResult(int* sockfd, char* buffer){
     printf("Received packet: %i(%i)\n", statusCode, strlen(buffer));
     
     switch(statusCode) {
-        case STATUS_OK:      return STATUS_OK;
-        case STATUS_EOF:     return STATUS_EOF;
+        case STATUS_OK:       return STATUS_OK;
+        case STATUS_EOF:      return STATUS_EOF;
+        case STATUS_SAME:     return MOOI;
+        case STATUS_AUTHOK:   return STATUS_AUTHOK;
+        case STATUS_AUTHFAIL: return STATUS_AUTHFAIL;
         
-        case STATUS_CR:      return FileTransferReceive(sockfd, to[1], atoi(to[2]));
-        case STATUS_MODCHK:  return ModifyCheckServer(sockfd, to[1], to[2]); //server
-        case STATUS_OLD:     return FileTransferSend(sockfd, to[1]);
-        case STATUS_NEW:     return FileTransferReceive(sockfd, to[1], atoi(to[2]));
-        default:             return MOOI;
+        case STATUS_CR:       return FileTransferReceive(sockfd, to[1], atoi(to[2]));
+        case STATUS_MODCHK:   return ModifyCheckServer(sockfd, to[1], to[2]); //server
+        case STATUS_OLD:      return FileTransferSend(sockfd, to[1]);
+        case STATUS_NEW:      return FileTransferReceive(sockfd, to[1], atoi(to[2]));
+        case STATUS_CNA:      return ConnectRefused(sockfd);
+        default:              return STUK;
     }
+}
+
+int ConnectRefused(int* sockfd){
+    printf("You have been disconnected\n");
+    close(*sockfd);
+    return STUK;
 }
 
 /**

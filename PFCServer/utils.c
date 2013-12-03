@@ -204,38 +204,6 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     
 }
 
-
-/**
- * Functie verstuurt de modify-date van een bestand naar de server en
- * krijgt terug welke de nieuwste is.
- * @param sockfd socket waarop gecontroleerd moet worden
- * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
- * @return 0 if succesvol. -1 if failed.
- */
-int ModifyCheckClient(int* sockfd, char* bestandsnaam){
-    struct stat bestandEigenschappen;
-    stat(bestandsnaam, &bestandEigenschappen);
-    
-    char statusCode[4], seconden[40];
-    char* buffer = malloc(BUFFERSIZE);
-    int readCounter = 0;
-    
-    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
-    sprintf(statusCode, "%d", STATUS_MODCHK);
-    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
-    
-    // Wacht op antwoord modifycheck van server
-    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
-        //printf("%s(%i)\n", buffer, readCounter);
-        perror("Receive modififycheck result error");
-        return STUK;
-    }
-    sendPacket(*sockfd, STATUS_OK, NULL);
-    switchResult(sockfd, buffer);
-    
-    return MOOI;
-}
-
 /**
  * Sends a packet to the fd defined
  * @param fd The fd to send this packet to

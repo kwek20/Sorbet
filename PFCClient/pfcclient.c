@@ -13,6 +13,8 @@
 
 struct sockaddr_in serv_addr;
 
+int SendCredentials(int* sockfd);
+
 int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
@@ -50,10 +52,12 @@ int pfcClient(char** argv){
    printStart();
 
    ConnectNaarServer(&sockfd);
+   if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(ModifyCheckClient(&sockfd, argv[1]) < 0){
        printf("error bij ModifyCheckClient\n");
        exit(EXIT_FAILURE);
    }
+   exit(EXIT_FAILURE);
 }
 /**
  * Functie serv_addr vullen
@@ -101,9 +105,72 @@ int ConnectNaarServer(int* sockfd){
     return 0;
 }
 
-/* 
- * client verstuurd | 301:bestandnaam:datemodi
- * client ontvangd | 401 | ga naar FileTransferSend()
- * client ontvangd | 402 | ga naar FileTransferRecieve()
- * client ontvangd | 2XX | Error
+/**
+ * Functie verstuurt de modify-date van een bestand naar de server en
+ * krijgt terug welke de nieuwste is.
+ * @param sockfd socket waarop gecontroleerd moet worden
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @return 0 if succesvol. -1 if failed.
  */
+int ModifyCheckClient(int* sockfd, char* bestandsnaam){
+    struct stat bestandEigenschappen;
+    stat(bestandsnaam, &bestandEigenschappen);
+    
+    char statusCode[4], seconden[40];
+    char* buffer = malloc(BUFFERSIZE);
+    int readCounter = 0;
+    
+    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
+    sprintf(statusCode, "%d", STATUS_MODCHK);
+    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
+    
+    // Wacht op antwoord modifycheck van server
+    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
+        //printf("%s(%i)\n", buffer, readCounter);
+        perror("Receive modififycheck result error");
+        return STUK;
+    }
+    sendPacket(*sockfd, STATUS_OK, NULL);
+    switchResult(sockfd, buffer);
+    
+    return MOOI;
+}
+
+/**
+ * De credentials 
+ * @param sockfd
+ * @return 
+ */
+int SendCredentials(int* sockfd){
+    
+     /*
+     * client verstuurd verzoek om in te loggen (302:username:password)
+     * server verstuurd 404 als dit mag of 203 als dit niet mag
+     */
+    
+    char buffer[BUFFERSIZE];
+    char* username = "test123";
+    char* password = "1234";
+    int sR = 0; //switchResult
+    
+    printf("druk enter om username en wachtwoord te sturen\n");
+    getchar();
+    
+    for(;;){
+        sendPacket(*sockfd, STATUS_AUTH, username, password, NULL);
+
+        if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+            perror("Receive metadata OK error");
+            return STUK;
+        }
+
+        sR = switchResult(sockfd, buffer);
+        switch(sR){
+            case STUK: return STUK;
+            case STATUS_AUTHFAIL: printf("Username or Password incorrect\n"); continue;
+            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); getchar(); return MOOI;
+        }
+    }
+    
+    return STUK;
+}

@@ -25,6 +25,7 @@ void numcli(void);
 void help(char **args, int amount);
 void clientinfo(char **args, int amount);
 int printClientInfo(struct sockaddr_in client, int number);
+int ReceiveCredentials(char* username, char* password);
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
@@ -108,9 +109,10 @@ int main(int argc, char** argv) {
  */
 void create(int *sock){
     //init vars
-    int result = 0, fd, rec;
+    int result = 0, fd, rec, i;
     struct sockaddr_in client_addr;
     char buffer[BUFSIZ];
+    char** to = malloc(1);
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -133,7 +135,29 @@ void create(int *sock){
     printf("IP Address: %s\n", ip);
     printf("Port: %i\n", poort);
     printf("Ready to receive!\n");
-
+    
+    //Login
+    for (i = 0; i < LOGINATTEMPTS; i++){
+        printf("at login\n");
+        if(recv(fd, buffer, BUFFERSIZE, 0) < 0){
+            perror("recv error");
+            return;
+        }
+        transform(buffer, to);
+        printf("to[1]: %s | to[2]: %s\n",to[1],to[2]);
+        if(ReceiveCredentials(to[1], to[2]) == MOOI){
+            sendPacket(fd, STATUS_AUTHOK);
+            break;
+        }
+        if(i < 2){
+            sendPacket(fd, STATUS_AUTHFAIL);
+        }else{
+            sendPacket(fd, STATUS_CNA);
+            stopClient(fd);
+            return;
+        }
+    }
+    
     //loop forever until client stops
     for ( ;; ){
         //receive info
@@ -293,4 +317,24 @@ void help(char **args, int amount){
 
 void numcli(void){
     printf("Currently available threads: %i.\n", cur_cli);
+}
+
+/**
+ * Deze functie zal controleren of de gebruikersnaam en het wachtwoord van de user kloppen
+ * @param sockfd
+ * @param username
+ * @param password
+ * @return 
+ */
+
+int ReceiveCredentials(char* username, char* password){
+    
+    if(strcmp(username,"test") != 0){
+        return STUK;
+        if(strcmp(password,"1234") != 0){
+            return STUK;
+        }
+    }
+    
+    return MOOI;
 }

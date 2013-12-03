@@ -50,6 +50,9 @@
 #define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is.
 #define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server.
 #define STATUS_AUTHOK 404 //Server verteld de client dat de authenticatie gelukt is.
+#define STATUS_AUTHFAIL 405 //Server verteld de client dat de authenticatie is mislukt.
+
+#define LOGINATTEMPTS 3 //Binnen dit aantal moet de gebruiker het wachtwoord goed raden. Anders wordt de verbinding verbroken.
 
 
 int pfcClient(char** argv);
@@ -59,7 +62,7 @@ int ConnectNaarServer(int* sockfd);
 int FileTransferSend(int* sockfd, char* bestandsnaam);
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
-int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft);
+int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 
 int transform(char *text, char** to);
@@ -77,3 +80,5 @@ void getEOF(char *to);
 void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
+
+int ConnectRefused(int* sockfd);
