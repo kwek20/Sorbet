@@ -28,19 +28,6 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
    return 0;
 }
 
-int main()
-{
-    sqlite3 *db;
-    char *zErrMsg = 0;
-    int rc;
-    
-    char *password;
-    
-    connectDB(rc);
-    //......
-    closeDB(db);
-}
-
 int connectDB(int rc, sqlite3 *db)
 {
     /* Open database */
@@ -101,6 +88,7 @@ int closeDB(sqlite3 *db)
 
 int hashPassword(char *password)
 {
+    char *password;
     //Crypto
 }
 

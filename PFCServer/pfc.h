@@ -77,3 +77,17 @@ void getEOF(char *to);
 void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
+
+//DB - Will be edited
+static int callback(void *NotUsed, int argc, char **argv, char **azColName);
+int connectDB(int rc, sqlite3 *db);
+int createDB();
+int updateDB(int rc, sqlite3 *db, char *sql, char *zErrMsg);
+int selectDB(int rc);
+int closeDB(sqlite3 *db);
+int hashPassword(char *password);
+int createUser(int rc);
+int removeUser(int rc);
+int checkCredentials();
+int sendCredentials();
+int writePasswordToLocalDB(int rc);

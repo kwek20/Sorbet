@@ -294,3 +294,10 @@ void help(char **args, int amount){
 void numcli(void){
     printf("Currently available threads: %i.\n", cur_cli);
 }
+
+void initDatabase()
+{
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+}
