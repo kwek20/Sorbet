@@ -25,7 +25,7 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName){
       printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
    printf("\n");
-   return 0;
+   return MOOI;
 }
 
 int connectDB(){
@@ -47,7 +47,7 @@ int connectDB(){
    printDB(rc, db);
    closeDB(db);
    
-   return 0;
+   return MOOI;
 }
 
 int initDB(int rc, sqlite3 *db)
@@ -84,7 +84,7 @@ int initDB(int rc, sqlite3 *db)
       fprintf(stdout, "Records created successfully\n");
    }
    
-   return 0;
+   return MOOI;
 }
 
 int printDB(int rc, sqlite3 *db){
@@ -105,23 +105,23 @@ int printDB(int rc, sqlite3 *db){
       fprintf(stdout, "Operation done successfully\n");
    }
    
-    return 0;
+    return MOOI;
 }
 
 int selectDB(int rc, sqlite3 *db)
 {
-    return 0;
+    return MOOI;
 }
 
 int closeDB(sqlite3 *db){
     sqlite3_close(db);
-    return 0;
+    return MOOI;
 }
 
 int hashPassword(){
     //char *password;
     //Crypto
-    return 0;
+    return MOOI;
 }
 
 // De onderstaande functies worden later verplaast
@@ -158,17 +158,17 @@ int createUser(int rc, sqlite3 *db){
       fprintf(stdout, "Records created successfully\n");
    }
    
-   return 0;
+   return MOOI;
 }
 
 int removeUser(int rc){
     //updateDB(rc);
-    return 0;
+    return MOOI;
 }
 
 int checkCredentials(){
     // Password == selectDB();
-    return 0;
+    return MOOI;
 }
 
 /*
@@ -176,10 +176,10 @@ int checkCredentials(){
  */
 
 int sendCredentials(){
-    return 0;
+    return MOOI;
 }
 
 int writePasswordToLocalDB(int rc){
     //updateDB(rc);
-    return 0;
+    return MOOI;
 }
