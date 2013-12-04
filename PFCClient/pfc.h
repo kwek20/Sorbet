@@ -88,11 +88,12 @@ int ConnectRefused(int* sockfd);
 //DB - Will be edited
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int connectDB();
-//int updateDB(int rc, sqlite3 *db);
-int selectDB(int rc);
+int initDB(int rc, sqlite3 *db);
+int printDB(int rc, sqlite3 *db);
+int selectDB(int rc, sqlite3 *db);
 int closeDB(sqlite3 *db);
 int hashPassword();
-int createUser(int rc);
+int createUser(int rc, sqlite3 *db);
 int removeUser(int rc);
 int checkCredentials();
 int sendCredentials();

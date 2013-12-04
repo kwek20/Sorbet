@@ -257,7 +257,7 @@ void command(void){
     char *command;
     char **args = malloc(1);
     for ( ;; ){
-        printf(" >");
+        printf(" > ");
         command = getInput(50);
         amount = transformWith(command, args, " ");
         if (amount < 1) continue;
@@ -344,7 +344,7 @@ void numcli(char **args, int amount){
 }
 
 void initDatabase(char **args, int amount){
-    //connectDB();
+    connectDB();
 }
 
 /**
