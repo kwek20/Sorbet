@@ -21,16 +21,30 @@ void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
 
 void command(void);
-void numcli(void);
+void numcli(char **args, int amount);
 void help(char **args, int amount);
 void clientinfo(char **args, int amount);
+void initDatabase(char **args, int amount);
+
 int printClientInfo(struct sockaddr_in client, int number);
+
 int ReceiveCredentials(char* username, char* password);
+
+const static struct {
+    const char *name;
+    void (*func)(char **args, int amount);
+} function_map[] = {
+    {"help", help},{"info", help},
+    {"numcli", numcli},
+    {"clientinfo", clientinfo},
+    {"initdb", initDatabase},
+};
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
 
 struct sockaddr_in *clients; 
+
 
 /*
  * Main function, starts all threads
@@ -145,7 +159,7 @@ void create(int *sock){
             return;
         }
         transform(buffer, to);
-        printf("to[1]: %s - to[2]: %s\n",to[1],to[2]);
+        printf("to[0]: %s, to[1]: %s - to[2]: %s\n",to[0], to[1],to[2]);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK);
             break;
@@ -247,22 +261,19 @@ void command(void){
         command = getInput(50);
         amount = transformWith(command, args, " ");
         if (amount < 1) continue;
-        
-        if (strcasecmp(args[0], "help") == MOOI){
-            help(args, amount);
-        } else if (strcasecmp(args[0], "info") == MOOI){
-            help(args, amount);
-        } else if(strcasecmp(args[0], "numcli") == MOOI){
-            numcli();
-        } else if(strcasecmp(args[0], "initdb") == MOOI){
-            initDatabase();
-        } else if(strcasecmp(args[0], "clientinfo") == MOOI){
-            clientinfo(args, amount);
-        } else if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
+        if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
             break;
-        } else {
-            help(args, amount);
         }
+        
+        int i;
+        for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
+            if (!strcasecmp(function_map[i].name, args[0]) && function_map[i].func){
+                function_map[i].func(args, amount);
+                i = -1;
+                break;
+            }
+        }
+        if (i != -1) help(args, amount);
     }
     
     quit();
@@ -316,18 +327,25 @@ void help(char **args, int amount){
             printf("aliases -> quit, stop, exit\n");
         }
     } else {
-        printf("Available commands: help, numcli, exit, clientinfo\n");
+        char *options = malloc(50);
+        strcpy(options, "exit, ");
+        int i;
+        for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
+            strcat(options, function_map[i].name);
+            strcat(options, ", ");
+        }
+        options[strlen(options)-2] = '\0';
+        printf("Available commands: %s\n", options);
     }
 }
 
-void numcli(void){
+void numcli(char **args, int amount){
     printf("Currently available threads: %i.\n", cur_cli);
 }
 
-void initDatabase()
- {
-    connectDB();
- }
+void initDatabase(char **args, int amount){
+    //connectDB();
+}
 
 /**
  * Deze functie zal controleren of de gebruikersnaam en het wachtwoord van de user kloppen
@@ -339,11 +357,11 @@ void initDatabase()
 
 int ReceiveCredentials(char* username, char* password){
     int temp = 0;
-    if((temp = strcmp(username,"test\n")) != 0){
+    if((temp = strcmp(username,"test")) != 0){
         printf("username fail temp: %i\n",temp);
         return STUK;
     }else{
-        if((temp = strcmp(password,"1234\n")) != 0){
+        if((temp = strcmp(password,"1234")) != 0){
             printf("password fail temp: %i\n",temp);
             return STUK;
         }

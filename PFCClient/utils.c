@@ -212,11 +212,10 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
  * @return 1 if the packet was send succesfully. otherwise 0
  */
 int sendPacket(int fd, int packet, ...){
-
-    char *info = malloc(20);
+    char *info = malloc(105);
     strcpy(info, "");
 
-    char *p = malloc(20);
+    char *p = malloc(105);
     sprintf(p, "%i", packet);
     
     va_list ap;

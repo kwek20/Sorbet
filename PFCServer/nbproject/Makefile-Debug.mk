@@ -39,7 +39,7 @@ OBJECTFILES= \
 
 
 # C Compiler Flags
-CFLAGS=-V -lpthread
+CFLAGS=-V -lpthread -lsqlite3
 
 # CC Compiler Flags
 CCFLAGS=

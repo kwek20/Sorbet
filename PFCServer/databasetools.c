@@ -19,18 +19,16 @@
 
 // ADDED PSEUDOCODE FOR LATER EDITING.
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName){
+int callback(void *NotUsed, int argc, char **argv, char **azColName){
    int i;
-   for(i=0; i<argc; i++)
-   {
+   for(i=0; i<argc; i++){
       printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
    printf("\n");
    return 0;
 }
 
-int connectDB()
-{
+int connectDB(){
    sqlite3 *db;
    char *zErrMsg = 0;
    int  rc;
@@ -42,7 +40,7 @@ int connectDB()
       fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
       exit(0);
    }else{
-      fprintf(stdout, "Opened database successfully\n");
+      printf("Opened database successfully\n");
    }
 
    /* Create SQL statement */
@@ -57,25 +55,22 @@ int connectDB()
    fprintf(stderr, "SQL error: %s\n", zErrMsg);
       sqlite3_free(zErrMsg);
    }else{
-      fprintf(stdout, "Table created successfully\n");
+      printf("Table created successfully\n");
    }
    sqlite3_close(db);
    return 0;
 }
 
-int selectDB(int rc)
-{
+int selectDB(int rc){
     return 0;
 }
 
-int closeDB(sqlite3 *db)
-{
+int closeDB(sqlite3 *db){
     //sqlite3_close(db);
     return 0;
 }
 
-int hashPassword()
-{
+int hashPassword(){
     char *password;
     //Crypto
     return 0;
@@ -87,20 +82,17 @@ int hashPassword()
  * Functies die voor de serverapplicatie bedoeld zijn.
  */
 
-int createUser(int rc)
-{
+int createUser(int rc){
     //updateDB(rc);
     return 0;
 }
 
-int removeUser(int rc)
-{
+int removeUser(int rc){
     //updateDB(rc);
     return 0;
 }
 
-int checkCredentials()
-{
+int checkCredentials(){
     // Password == selectDB();
     return 0;
 }
@@ -109,13 +101,11 @@ int checkCredentials()
  * Functies die voor de clientapplicatie bedoeld zijn.
  */
 
-int sendCredentials()
-{
+int sendCredentials(){
     return 0;
 }
 
-int writePasswordToLocalDB(int rc)
-{
+int writePasswordToLocalDB(int rc){
     //updateDB(rc);
     return 0;
 }

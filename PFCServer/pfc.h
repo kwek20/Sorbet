@@ -82,10 +82,11 @@ void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
 
+
 int ConnectRefused(int* sockfd);
 
 //DB - Will be edited
-static int callback(void *NotUsed, int argc, char **argv, char **azColName);
+int callback(void *NotUsed, int argc, char **argv, char **azColName);
 int connectDB();
 //int updateDB(int rc, sqlite3 *db);
 int selectDB(int rc);

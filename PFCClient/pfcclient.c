@@ -147,29 +147,29 @@ int SendCredentials(int* sockfd){
      * client verstuurd verzoek om in te loggen (302:username:password)
      * server verstuurd 404 als dit mag of 203 als dit niet mag
      */
-    char *username, *password;
-    char buffer[BUFFERSIZE];
+    char *username, *password, *buffer;
     int sR = 0; //switchResult
 
     
     for(;;){
         
-        bzero(buffer, BUFFERSIZE);
+        //bzero(buffer, BUFFERSIZE);
         printf("Username: ");
-        fgets(buffer, BUFFERSIZE, stdin);
+        buffer = getInput(50);
         username = malloc(strlen(buffer));
         strcpy(username,buffer);
         
-        bzero(buffer, BUFFERSIZE);
+        memset(buffer, 0 , strlen(buffer));
+        
         printf("Password: ");
-        fgets(buffer, BUFFERSIZE, stdin);
+        buffer = getInput(50);
         password = malloc(strlen(buffer));
         strcpy(password,buffer);
 
-        bzero(buffer, BUFFERSIZE);
+        memset(buffer, 0 , strlen(buffer));
+        
         printf("ready to send\n"); //BRORD !!!! WERKT NIET
         sendPacket(*sockfd, STATUS_AUTH, username, password, NULL);
-
         if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
