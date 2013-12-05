@@ -118,12 +118,6 @@ int closeDB(sqlite3 *db){
     return MOOI;
 }
 
-int hashPassword(){
-    //char *password;
-    //Crypto
-    return MOOI;
-}
-
 // De onderstaande functies worden later verplaast
 
 /*

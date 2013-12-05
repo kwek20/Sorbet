@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <sqlite3.h>
+#include <openssl/sha.h>
 
 
 #define BUFFERSIZE 4096
@@ -82,6 +83,9 @@ void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
 
+int hashPassword() 
+int randomSalt(char *salt, int aantalBytes);
+int convertHashToString(char *stringHash, unsigned char hash[]);
 
 int ConnectRefused(int* sockfd);
 
@@ -92,7 +96,6 @@ int initDB(int rc, sqlite3 *db);
 int printDB(int rc, sqlite3 *db);
 int selectDB(int rc, sqlite3 *db);
 int closeDB(sqlite3 *db);
-int hashPassword();
 int createUser(int rc, sqlite3 *db);
 int removeUser(int rc);
 int checkCredentials();

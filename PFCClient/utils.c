@@ -311,6 +311,73 @@ int changeModTime(char *bestandsnaam, int time){
 }
 
 /**
+ * Functie hashed wachtwoorden voordat deze de database ingaan.
+ * @return 0 if succesvol
+ */
+int hashPassword() {
+    char ibuf[] = "ditismijnsupergeheimewachtwoord:>";
+    char salt[64];
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    char *stringHash = malloc(64);
+    SHA256_CTX ctx;
+    
+    // Initialiseer struct
+    SHA256_Init(&ctx);
+    
+    // Plaats wachtwoord in struct 
+    SHA256_Update(&ctx, ibuf, sizeof(ibuf) -1);
+    
+    // Genereer random salt
+    randomSalt(salt, 64);
+    
+    // Voeg salt en wachtwoord samen
+    SHA256_Update(&ctx, salt, 64); 
+    
+    // Genereer de hash
+    SHA256_Final(hash, &ctx);
+    
+    // Maak van Hex een String
+    convertHashToString(stringHash, hash);
+    
+    return MOOI;
+}
+
+/**
+ * Functie wordt gebruikt om een willekeurig salt te genereren
+ * @param salt - pointer naar een saltvar in de functie hashPassword()
+ * @param aantalBytes - Aantal bytes voor het salt
+ * @return 
+ */
+int randomSalt(char *salt, int aantalBytes) {
+    int i;
+    srand(time(NULL));
+    
+    for(i = 0; i < aantalBytes; i++){
+        salt[i] = (rand() % 26) + 97;
+    }
+    
+    return MOOI;
+}
+
+/**
+ * Functie om hexadecimale hashes te converteren naar strings
+ * @param stringHash - Pointer naar nieuwe string
+ * @param hash - Hexadecimale unsigned char[]
+ * @return 
+ */
+int convertHashToString(char *stringHash, unsigned char hash[]) {
+    char temp[3];
+    int i;
+    
+    bzero(stringHash, SHA256_DIGEST_LENGTH);
+    for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        sprintf(temp, "%02x", hash[i]);
+        strcat(stringHash, temp);
+    }
+    return MOOI;
+}
+
+/**
  * Functie om een array te printen
  * @param length de lengte van de array
  * @param array de array met strings
