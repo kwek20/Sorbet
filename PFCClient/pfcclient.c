@@ -153,7 +153,6 @@ int SendCredentials(int* sockfd){
     
     for(;;){
         
-        //bzero(buffer, BUFFERSIZE);
         printf("Username: ");
         buffer = getInput(50);
         username = malloc(strlen(buffer));
