@@ -6,6 +6,7 @@
  */
 
 #include "../PFCClient/pfc.h"
+#include "pfc.h"
 #include <memory.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -21,10 +22,11 @@ void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
 
 void command(void);
-void numcli(char **args, int amount);
-void help(char **args, int amount);
-void clientinfo(char **args, int amount);
-void initDatabase(char **args, int amount);
+int numcli(char **args, int amount);
+int help(char **args, int amount);
+int clientinfo(char **args, int amount);
+int initDatabase(char **args, int amount);
+int printTable(char **args, int amount);
 
 int printClientInfo(struct sockaddr_in client, int number);
 
@@ -32,12 +34,16 @@ int ReceiveCredentials(char* username, char* password);
 
 const static struct {
     const char *name;
-    void (*func)(char **args, int amount);
+    int (*func)(char **args, int amount);
 } function_map[] = {
     {"help", help},{"info", help},
     {"numcli", numcli},
     {"clientinfo", clientinfo},
     {"initdb", initDatabase},
+    {"printdb", printTable},
+    {"adduser", createUser},
+    {"createuser", createUser},
+    {"removeuser", removeUser},
 };
 
 int sock, bestandfd, cur_cli = 0;
@@ -218,6 +224,7 @@ void SIGexit(int sig){
 
 void quit(){
     puts("\nStopping server.....");
+    closeDB();
     close(sock);
     exit(MOOI);
 }
@@ -279,7 +286,7 @@ void command(void){
     quit();
 }
 
-void clientinfo(char **args, int amount){
+int clientinfo(char **args, int amount){
     //data for later usage
     int i, j = 0;
     if (amount > 1){
@@ -299,6 +306,7 @@ void clientinfo(char **args, int amount){
     if (j == 0){
         printf("No clients connected\n");
     }
+    return MOOI;
 }
 
 int printClientInfo(struct sockaddr_in client, int number){
@@ -315,7 +323,7 @@ int printClientInfo(struct sockaddr_in client, int number){
     return STUK;
 }
 
-void help(char **args, int amount){
+int help(char **args, int amount){
     if (amount > 1){
         if (strcasecmp(args[1], "help") == MOOI){
             printf("help [command] -> Show help about a specific command\n");
@@ -337,14 +345,31 @@ void help(char **args, int amount){
         options[strlen(options)-2] = '\0';
         printf("Available commands: %s\n", options);
     }
+    return MOOI;
 }
 
-void numcli(char **args, int amount){
+int numcli(char **args, int amount){
     printf("Currently available threads: %i.\n", cur_cli);
+    return MOOI;
 }
 
-void initDatabase(char **args, int amount){
+int initDatabase(char **args, int amount){
     connectDB();
+    return MOOI;
+}
+
+int printTable(char **args, int amount){
+    if (amount < 2){
+        return STUK;
+    }
+    
+    char* sql = malloc(100);
+    strcpy(sql, "SELECT * FROM ");
+    strcat(sql, args[1]);
+    strcat(sql, ";");
+   
+    printRes(selectQuery(sql));
+    return MOOI;
 }
 
 /**

@@ -17,6 +17,8 @@
 
 #include "pfc.h"
 
+sqlite3 *db;
+
 // ADDED PSEUDOCODE FOR LATER EDITING.
 
 int callback(void *NotUsed, int argc, char **argv, char **azColName){
@@ -24,12 +26,12 @@ int callback(void *NotUsed, int argc, char **argv, char **azColName){
    for(i=0; i<argc; i++){
       printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
    }
+   
    printf("\n");
    return MOOI;
 }
 
 int connectDB(){
-   sqlite3 *db;
    int  rc;
 
    /* Open database */
@@ -41,122 +43,106 @@ int connectDB(){
       printf("Opened database successfully\n");
    }
    
-   initDB(rc, db);
-   printDB(rc, db);
-   createUser(rc, db);
-   printDB(rc, db);
-   closeDB(db);
-   
+   //initDB(rc);
    return MOOI;
 }
 
-int initDB(int rc, sqlite3 *db)
-{
+int initDB(){
     char *zErrMsg = 0;
     char *sql;
+    int rc;
+    
     /* Create SQL statement */
    sql = "CREATE TABLE USERS("  \
           "ID INTEGER PRIMARY KEY   AUTOINCREMENT," \
-          "NAME           TEXT    NOT NULL," \
+          "NAME           TEXT    NOT NULL UNIQUE," \
           "PASSWORD       TEXT    NOT NULL);";
 
    /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
-   fprintf(stderr, "SQL error: %s\n", zErrMsg);
+      fprintf(stderr, "SQL error: %s\n", zErrMsg);
       sqlite3_free(zErrMsg);
    }else{
       printf("Table created successfully\n");
    }
-   
-   /* Create SQL statement */
-   sql = "INSERT INTO USERS (NAME,PASSWORD) "  \
-         "VALUES ('Dave', 'PaSSwoRd'); " \
-         "INSERT INTO USERS (NAME,PASSWORD) "  \
-         "VALUES ('Brord', 'BrordWorD'); " ;
-
-   /* Execute SQL statement */
-   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-   if( rc != SQLITE_OK ){
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-   }else{
-      fprintf(stdout, "Records created successfully\n");
-   }
-   
    return MOOI;
 }
 
-int printDB(int rc, sqlite3 *db){
-    
-    char *sql = malloc(100);
-    char *zErrMsg = 0;
-    const char* data = "Callback function called";
-    
-    /* Create SQL statement */
-   sql = "SELECT * from USERS";
-
-   /* Execute SQL statement */
-   rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
-   if( rc != SQLITE_OK ){
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-   }else{
-      fprintf(stdout, "Operation done successfully\n");
-   }
-   
-    return MOOI;
+sqlite3_stmt* selectQuery(char *query){
+  sqlite3_stmt *res;
+  const char *tail;
+  
+  if(sqlite3_prepare_v2(db, query, strlen(query), &res, &tail) != SQLITE_OK){
+    sqlite3_close(db);
+    printf("Can't retrieve data: %s\n", sqlite3_errmsg(db));
+    return(NULL);
+  }
+  
+  return res;
 }
 
-int selectDB(int rc, sqlite3 *db)
-{
-    return MOOI;
+void printRes(sqlite3_stmt *res){
+  int count = 0, result, i;
+  printf("Reading data...\n");
+  for ( ;; ){
+      result = sqlite3_step(res);
+      printf("Result: %i\n", result);
+      if (result == SQLITE_ROW){
+          for (i=0; i<sqlite3_column_count(res); i++){
+             sqlite3_column_text(res, i);
+          }
+        count++;
+      } else {
+          break;
+      }
+  }
+  printf("Rows count: %d\n", count);
 }
 
-int closeDB(sqlite3 *db){
+int closeDB(){
     sqlite3_close(db);
     return MOOI;
 }
 
-// De onderstaande functies worden later verplaast
-
 /*
  * Functies die voor de serverapplicatie bedoeld zijn.
  */
-
-int createUser(int rc, sqlite3 *db){
+int createUser(char **args, int amount){
     //updateDB(rc);
     char *zErrMsg = 0;
     char *sql = malloc(100);
-    char *tempUser;
-    char *tempPassword;
+    int rc;
     
-    printf("enter username:\n");
-    tempUser = getInput(50);
-    printf("enter password:\n");
-    tempPassword = getInput(50);
+    if (amount <= 2){
+        return STUK;
+    }
     
     strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD) ");
     strcat (sql, "VALUES ('");
-    strcat (sql, tempUser);
+    strcat (sql, args[2]);
     strcat (sql, "', '");
-    strcat (sql, tempPassword);
+    strcat (sql, args[3]);
     strcat (sql, "');");
     
     /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
-      fprintf(stderr, "SQL error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-   }else{
-      fprintf(stdout, "Records created successfully\n");
+       return STUK;
+   } else{
+      printf("Records created successfully\n");
    }
    
    return MOOI;
 }
 
-int removeUser(int rc){
+int removeUser(char **args, int amount){
     //updateDB(rc);
+    if (amount < 2){
+        return STUK;
+    }
+    
+    //remove user args[2]
     return MOOI;
 }
 
