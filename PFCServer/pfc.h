@@ -56,6 +56,12 @@
 
 #define LOGINATTEMPTS 3 //Binnen dit aantal moet de gebruiker het wachtwoord goed raden. Anders wordt de verbinding verbroken.
 
+typedef struct clientsinfo{
+    struct sockaddr_in client;
+    char* username;
+} clientsinfo;
+
+struct clientsinfo *clients;
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);

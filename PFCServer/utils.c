@@ -113,11 +113,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
-    printf(username);
+    char* safedir = malloc(50);
+    strcpy(safedir, "");
+    strcat(safedir, clients[*sockfd-4].username);
+    strcat(safedir, "/");
+    strcat(safedir, bestandsnaam);
     
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
-    file = open(bestandsnaam, O_WRONLY | O_CREAT, 0666);
+    file = open(safedir, O_WRONLY | O_CREAT, 0666);
     if (file < 0){
         perror("open");
         return STUK;

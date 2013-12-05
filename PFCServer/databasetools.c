@@ -53,7 +53,7 @@ int initDB(){
     int rc;
     
     /* Create SQL statement */
-   sql = "CREATE TABLE USERS("  \
+   sql = "CREATE TABLE IF NOT EXISTS USERS("  \
           "ID INTEGER PRIMARY KEY   AUTOINCREMENT," \
           "NAME           TEXT    NOT NULL UNIQUE," \
           "PASSWORD       TEXT    NOT NULL);";
@@ -87,11 +87,11 @@ void printRes(sqlite3_stmt *res){
   printf("Reading data...\n");
   for ( ;; ){
       result = sqlite3_step(res);
-      printf("Result: %i\n", result);
       if (result == SQLITE_ROW){
           for (i=0; i<sqlite3_column_count(res); i++){
-             sqlite3_column_text(res, i);
+             printf("%s\n", sqlite3_column_text(res, i));
           }
+          puts("");
         count++;
       } else {
           break;
@@ -118,12 +118,13 @@ int createUser(char **args, int amount){
         return STUK;
     }
     
-    strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD) ");
-    strcat (sql, "VALUES ('");
-    strcat (sql, args[2]);
+    strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD) VALUES ('");
+    strcat (sql, args[1]);
     strcat (sql, "', '");
-    strcat (sql, args[3]);
+    strcat (sql, args[2]);
     strcat (sql, "');");
+    
+    printf("sql: %s\n", sql);
     
     /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
@@ -134,6 +135,50 @@ int createUser(char **args, int amount){
    }
    
    return MOOI;
+}
+
+int userExists(char* name){
+    char *sql = malloc(40);
+    strcpy(sql, "SELECT * FROM USERS WHERE NAME = '");
+    strcat(sql, name);
+    strcat(sql, "';");
+    
+    sqlite3_stmt* res = selectQuery(sql);
+    if (res == NULL) {
+        sqlite3_finalize(res);
+        return STUK;
+    }
+    
+    int i;
+    if ((i = sqlite3_step(res)) == SQLITE_ROW){
+        sqlite3_finalize(res);
+        return MOOI;
+    } else {
+        sqlite3_finalize(res);
+        return STUK;
+    }
+}
+
+char* getPassWord(char *name){
+    char *password = malloc(50);
+    strcpy(password, "");
+    
+    if (userExists(name) == MOOI){
+        char *sql = malloc(100);
+        strcpy(sql, "SELECT PASSWORD FROM USERS WHERE NAME = '");
+        strcat(sql, name);
+        strcat(sql, "';");
+        
+        sqlite3_stmt* res = selectQuery(sql);
+        if (res != NULL) {
+            if (sqlite3_step(res) == SQLITE_ROW){
+                strcpy(password, (char *)sqlite3_column_text(res, 0));
+            }
+        }
+    }
+    
+    //shouldnt happen
+    return password;
 }
 
 int removeUser(char **args, int amount){

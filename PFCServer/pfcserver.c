@@ -28,7 +28,7 @@ int clientinfo(char **args, int amount);
 int initDatabase(char **args, int amount);
 int printTable(char **args, int amount);
 
-int printClientInfo(struct sockaddr_in client, int number);
+int printClientInfo(struct clientsinfo client, int number);
 
 int ReceiveCredentials(char* username, char* password);
 
@@ -47,8 +47,6 @@ const static struct {
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
-
-struct sockaddr_in *clients; 
 
 /*
  * Main function, starts all threads
@@ -71,7 +69,7 @@ int main(int argc, char** argv) {
     
     //make server data
     struct sockaddr_in server_addr = getServerAddr(poort);
-    clients = (struct sockaddr_in*) malloc(MAX_CLI*sizeof(struct sockaddr_in));
+    clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
     
     //make a socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -132,7 +130,6 @@ void create(int *sock){
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
     char** to = malloc(1);
-    char* username;
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -148,17 +145,17 @@ void create(int *sock){
     ip = inet_ntoa(client_addr.sin_addr);
     int poort = htons(client_addr.sin_port);
 
-    clients[fd-4] = client_addr;
+    //add to the list
+    clients[fd-4].client = client_addr;
     
     //print information
     printf("\n-------------\nConnection accepted with client: %i\n", fd);
     printf("IP Address: %s\n", ip);
     printf("Port: %i\n", poort);
-    printf("Ready to receive!\n");
+    printf("Waiting for authentication...\n");
     
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
-        printf("at login\n");
         bzero(buffer, BUFFERSIZE);
         if(recv(fd, buffer, BUFFERSIZE, 0) < 0){
             perror("recv error");
@@ -167,8 +164,11 @@ void create(int *sock){
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK, NULL);
-            username = malloc(strlen(to[1]));
-            strcpy(username, to[1]);
+            //add username
+            clients[fd-4].username = malloc(strlen(to[1]));
+            strcpy(clients[fd-4].username, to[1]);
+            
+            mkdir(to[1], S_IRWXU);
             break;
         }
         
@@ -181,7 +181,7 @@ void create(int *sock){
         }
     }
     //End of Login
-    
+    printf("user %s has logged in, awaiting orders.\n", clients[fd-4].username);
     //loop forever until client stops
     for ( ;; ){
         //receive info
@@ -195,7 +195,7 @@ void create(int *sock){
             break;
         } else {
             //good
-            if ((result = switchResult(&fd, buffer)) < 0){
+            if ((result = switchResult(&fd, buffer)) == STUK){
                 //error
                 break;
             } else {
@@ -293,13 +293,13 @@ int clientinfo(char **args, int amount){
     int i, j = 0;
     if (amount > 1){
         i = atoi(args[1]);
-        if (clients[i].sin_port != 0){
+        if (clients[i].client.sin_port != 0){
             printClientInfo(clients[i], i);
         }
     }
     
     for (i=0; i<MAX_CLI; i++){
-        if (clients[i].sin_port != 0){
+        if (clients[i].client.sin_port != 0){
             j = 1;
             printClientInfo(clients[i], i+1);
         }
@@ -311,15 +311,14 @@ int clientinfo(char **args, int amount){
     return MOOI;
 }
 
-int printClientInfo(struct sockaddr_in client, int number){
-    if (client.sin_port != 0){
+int printClientInfo(struct clientsinfo client, int number){
+    if (client.client.sin_port != 0){
         char *ip;
-        ip = inet_ntoa(client.sin_addr);
+        ip = inet_ntoa(client.client.sin_addr);
 
-        printf("Info from client %i\n", number);
+        printf("Info from client %s\n", client.username);
         printf("- IP Address: %s\n", ip);
-        printf("- Port: %i\n", htons(client.sin_port));
-        
+        printf("- Port: %i\n", htons(client.client.sin_port));
         return MOOI;
     }
     return STUK;
@@ -397,7 +396,5 @@ int ReceiveCredentials(char* username, char* password){
         printf("password fail temp: %i\n",temp);
         return STUK;
     }
-    
-    printf("username and password OK\n");
     return MOOI;
 }
