@@ -313,7 +313,7 @@ int changeModTime(char *bestandsnaam, int time){
 /**
  * Functie hashed wachtwoorden voordat deze de database ingaan.
  * @return 0 if succesvol
- */
+ 
 int hashPassword() {
     char ibuf[] = "ditismijnsupergeheimewachtwoord:>";
     char salt[64];
@@ -341,6 +341,7 @@ int hashPassword() {
     
     return MOOI;
 }
+ * */
 
 /**
  * Functie wordt gebruikt om een willekeurig salt te genereren
