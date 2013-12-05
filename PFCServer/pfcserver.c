@@ -35,14 +35,18 @@ int ReceiveCredentials(char* username, char* password);
 const static struct {
     const char *name;
     int (*func)(char **args, int amount);
+    int aliasesAmount;
+    char *description;
+    const char * const *aliases;
 } function_map[] = {
-    {"help", help},{"info", help},
-    {"numcli", numcli},
-    {"clientinfo", clientinfo},
-    {"initdb", initDatabase},
-    {"printtable", printTable},
-    {"adduser", createUser},{"createuser", createUser},
-    {"removeuser", removeUser},
+    {"help", help, 1, "help [command] -> Show help about a specific command\n help -> Show all the commands in a list", (const char * const []){"info"}},
+    {"numcli", numcli, 0, "Will show you the current amount of online clients", (const char * const []){}},
+    {"clientinfo", clientinfo, 1, "Shows the info form the client defined, or all clients", (const char * const []){"cinfo"}},
+    {"initdb", initDatabase, 0, "Initializes the database if it wasnt yet for some reason", (const char * const []){}},
+    {"printtable", printTable, 0, "Prints all the data in the table defined", (const char * const []){}},
+    {"adduser", createUser, 1, "Creates a user with the name and password", (const char * const []){"createuser"}},
+    {"removeuser", removeUser, 0, "Removes the defined user", (const char * const []){}},
+    {"quit", quit, 2, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop"}},
 };
 
 int sock, bestandfd, cur_cli = 0;
@@ -264,22 +268,28 @@ void command(void){
     int amount;
     char *command;
     char **args = malloc(1);
+    
+    int i, j;
     for ( ;; ){
         printf(" > ");
         command = getInput(50);
         amount = transformWith(command, args, " ");
         
         if (amount < 1) continue;
-        if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
-            break;
-        }
         
-        int i;
         for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
             if (!strcasecmp(function_map[i].name, args[0]) && function_map[i].func){
                 function_map[i].func(args, amount);
                 i = -1;
                 break;
+            } else {
+                for (j=0; j<function_map[i].aliasesAmount; j++){
+                    if (!strcasecmp(function_map[i].aliases[j], args[0]) && function_map[i].func){
+                        function_map[i].func(args, amount);
+                        i = -1;
+                        break;
+                    }
+                }
             }
         }
         if (i != -1) help(args, amount);
@@ -325,20 +335,21 @@ int printClientInfo(struct clientsinfo client, int number){
 }
 
 int help(char **args, int amount){
+    int i;
     if (amount > 1){
-        if (strcasecmp(args[1], "help") == MOOI){
-            printf("help [command] -> Show help about a specific command\n");
-            printf("help -> Show all the commands in a list\n");
-        } else if (strcasecmp(args[1], "numcli") == MOOI){
-            printf("numcli -> Will show you the current amount of online clients\n");
-        } else if (strcasecmp(args[1], "exit") == MOOI || strcasecmp(args[1], "stop") == MOOI || strcasecmp(args[1], "quit") == MOOI){
-            printf("%s -> This will gracefully stop the server and it's active connections\n", args[1]);
-            printf("aliases -> quit, stop, exit\n");
+        int j;
+        for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
+            if (!strcasecmp(function_map[i].name, args[1]) && function_map[i].func){
+                printf(" %s -> %s\n", args[1], function_map[i].description);
+                for (j=0; j < function_map[i].aliasesAmount; j++){
+                    printf(" Alias: %s\n", function_map[i].aliases[j]);
+                }
+                break;
+            }
         }
     } else {
-        char *options = malloc(50);
+        char *options = malloc(100);
         strcpy(options, "exit, ");
-        int i;
         for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
             strcat(options, function_map[i].name);
             strcat(options, ", ");

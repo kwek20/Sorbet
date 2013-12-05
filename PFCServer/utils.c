@@ -50,6 +50,15 @@ int BestaatDeFile(char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
+    char* savedir = malloc(strlen(bestandsnaam));
+    strcpy(savedir, "");
+    if (clients[*sockfd-4].username != NULL){
+        savedir = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+        strcpy(savedir, "");
+        strcat(savedir, clients[*sockfd-4].username);
+        strcat(savedir, "/");
+    }
+    strcat(savedir, bestandsnaam);
     
     char buffer[BUFFERSIZE], statusCode[4];
     int readCounter = 0;
@@ -59,7 +68,7 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         return STUK;
     }
     
-    if((OpenBestand(bestandsnaam)) < 0){return -1;}
+    if((OpenBestand(savedir)) < 0){return -1;}
     if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
@@ -113,15 +122,19 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
-    char* safedir = malloc(50);
-    strcpy(safedir, "");
-    strcat(safedir, clients[*sockfd-4].username);
-    strcat(safedir, "/");
-    strcat(safedir, bestandsnaam);
+    char* savedir = malloc(strlen(bestandsnaam));
+    strcpy(savedir, "");
+    if (clients[*sockfd-4].username != NULL){
+        savedir = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+        strcpy(savedir, "");
+        strcat(savedir, clients[*sockfd-4].username);
+        strcat(savedir, "/");
+    }
+    strcat(savedir, bestandsnaam);
     
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
-    file = open(safedir, O_WRONLY | O_CREAT, 0666);
+    file = open(savedir, O_WRONLY | O_CREAT, 0666);
     if (file < 0){
         perror("open");
         return STUK;
@@ -167,8 +180,13 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
     char *buffer = malloc(1);
+    char *filepath = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+    strcpy(filepath, "");
+    strcat(filepath, clients[*sockfd-4].username);
+    strcat(filepath, "/");
+    strcat(filepath, bestandsnaam);
     
-    if ((file = open(bestandsnaam, O_RDONLY, 0666)) < 0){
+    if ((file = open(filepath, O_RDONLY, 0666)) < 0){
         sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
         
         sprintf(buffer, "%i", STATUS_CR);
@@ -178,7 +196,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         strcat(buffer, "0");
     } else {
         int owntime;
-        if ((owntime = modifiedTime(bestandsnaam)) < time){
+        if ((owntime = modifiedTime(filepath)) < time){
             //own file older
             sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
             //sendPacket(*sockfd, STATUS_NEW, NULL);
@@ -243,7 +261,7 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    printf("Send packet: %i info:%s(%i)\n", packet, info, bytes);
+    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, bytes);
     return MOOI;
 }
 

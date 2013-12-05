@@ -115,6 +115,7 @@ int createUser(char **args, int amount){
     int rc;
     
     if (amount <= 2){
+        puts("Create user failed!");
         return STUK;
     }
     
@@ -129,16 +130,16 @@ int createUser(char **args, int amount){
     /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
+       puts("Create user failed!");
        return STUK;
-   } else{
-      printf("Records created successfully\n");
-   }
+   } 
+   printf("Sucessfully created user %s\n", args[1]);
    
    return MOOI;
 }
 
 int userExists(char* name){
-    char *sql = malloc(40);
+    char *sql = malloc(100);
     strcpy(sql, "SELECT * FROM USERS WHERE NAME = '");
     strcat(sql, name);
     strcat(sql, "';");
