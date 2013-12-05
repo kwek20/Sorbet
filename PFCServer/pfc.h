@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   pfc.h
  * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
  *
@@ -83,7 +83,7 @@ void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
 
-int hashPassword() 
+int hashPassword();
 int randomSalt(char *salt, int aantalBytes);
 int convertHashToString(char *stringHash, unsigned char hash[]);
 
