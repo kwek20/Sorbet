@@ -386,7 +386,7 @@ int convertHashToString(char *stringHash, unsigned char hash[]) {
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
-        printf("%s ", array[i]);
+        printf("%s, ", array[i]);
     }
     puts("\n");
 }

@@ -113,6 +113,8 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
+    printf(username);
+    
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
     file = open(bestandsnaam, O_WRONLY | O_CREAT, 0666);
@@ -386,7 +388,7 @@ int convertHashToString(char *stringHash, unsigned char hash[]) {
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
-        printf("%s ", array[i]);
+        printf("%s, ", array[i]);
     }
     puts("\n");
 }

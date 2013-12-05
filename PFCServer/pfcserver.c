@@ -40,9 +40,8 @@ const static struct {
     {"numcli", numcli},
     {"clientinfo", clientinfo},
     {"initdb", initDatabase},
-    {"printdb", printTable},
-    {"adduser", createUser},
-    {"createuser", createUser},
+    {"printtable", printTable},
+    {"adduser", createUser},{"createuser", createUser},
     {"removeuser", removeUser},
 };
 
@@ -50,7 +49,6 @@ int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
 
 struct sockaddr_in *clients; 
-
 
 /*
  * Main function, starts all threads
@@ -94,6 +92,7 @@ int main(int argc, char** argv) {
     }
     
     printStart();
+    connectDB();
     
     pthread_t cmd;
     pthread_create(&cmd, NULL, (void*)command, NULL);
@@ -133,6 +132,7 @@ void create(int *sock){
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
     char** to = malloc(1);
+    char* username;
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -165,16 +165,17 @@ void create(int *sock){
             return;
         }
         transform(buffer, to);
-        printf("to[0]: %s, to[1]: %s - to[2]: %s\n",to[0], to[1],to[2]);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
-            sendPacket(fd, STATUS_AUTHOK);
+            sendPacket(fd, STATUS_AUTHOK, NULL);
+            username = malloc(strlen(to[1]));
+            strcpy(username, to[1]);
             break;
         }
-        printf("recvCred: %i\n",temp);
+        
         if(i < 2){
-            sendPacket(fd, STATUS_AUTHFAIL);
-        }else{
-            sendPacket(fd, STATUS_CNA);
+            sendPacket(fd, STATUS_AUTHFAIL, NULL);
+        } else {
+            sendPacket(fd, STATUS_CNA, NULL);
             stopClient(fd);
             return;
         }
@@ -267,6 +268,7 @@ void command(void){
         printf(" > ");
         command = getInput(50);
         amount = transformWith(command, args, " ");
+        
         if (amount < 1) continue;
         if((strcasecmp(args[0], "exit") == MOOI) || (strcasecmp(args[0], "stop") == MOOI) || (strcasecmp(args[0], "quit") == MOOI)){
             break;
@@ -363,12 +365,20 @@ int printTable(char **args, int amount){
         return STUK;
     }
     
-    char* sql = malloc(100);
+    char* sql = malloc(15);
     strcpy(sql, "SELECT * FROM ");
     strcat(sql, args[1]);
     strcat(sql, ";");
    
-    printRes(selectQuery(sql));
+    puts(sql);
+    
+    sqlite3_stmt* res = selectQuery(sql);
+    if (&res == NULL){
+        puts("Query failed!");
+        return STUK;
+    }
+    printRes(res);
+    sqlite3_finalize(res);
     return MOOI;
 }
 
@@ -382,15 +392,12 @@ int printTable(char **args, int amount){
 
 int ReceiveCredentials(char* username, char* password){
     int temp = 0;
-    if((temp = strcmp(username,"test")) != 0){
-        printf("username fail temp: %i\n",temp);
+    
+    if(strcmp(password, getPassWord(username)) != 0){
+        printf("password fail temp: %i\n",temp);
         return STUK;
-    }else{
-        if((temp = strcmp(password,"1234")) != 0){
-            printf("password fail temp: %i\n",temp);
-            return STUK;
-        }
     }
+    
     printf("username and password OK\n");
     return MOOI;
 }

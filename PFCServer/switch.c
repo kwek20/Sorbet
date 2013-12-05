@@ -74,7 +74,7 @@ int transformWith(char *text, char** to, char *delimit){
 
     while (temp != NULL || temp != '\0'){
         to[numVars] = temp;
-        temp = strtok(NULL, ":");
+        temp = strtok(NULL, delimit);
         numVars++;
     }
     return numVars;

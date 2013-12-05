@@ -101,6 +101,7 @@ int closeDB();
 
 int createUser(char **args, int amount);
 int removeUser(char **args, int amount);
+int userExists(char* name);
 
 int checkCredentials();
 int sendCredentials();
