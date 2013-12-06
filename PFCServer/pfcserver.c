@@ -5,7 +5,6 @@
  * Created on November 19, 2013, 10:37 AM
  */
 
-#include "../PFCClient/pfc.h"
 #include "pfc.h"
 #include <memory.h>
 #include <pthread.h>
@@ -46,7 +45,7 @@ const static struct {
     {"printtable", printTable, 0, "Prints all the data in the table defined", (const char * const []){}},
     {"adduser", createUser, 1, "Creates a user with the name and password", (const char * const []){"createuser"}},
     {"removeuser", removeUser, 0, "Removes the defined user", (const char * const []){}},
-    {"quit", quit, 2, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop"}},
+    {"quit", NULL, 3, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop", "end"}}
 };
 
 int sock, bestandfd, cur_cli = 0;
@@ -276,6 +275,7 @@ void command(void){
         amount = transformWith(command, args, " ");
         
         if (amount < 1) continue;
+        if (strcasecmp(args[0], "stop") || strcasecmp(args[0], "exit") || strcasecmp(args[0], "quit") || strcasecmp(args[0], "end")) break;
         
         for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
             if (!strcasecmp(function_map[i].name, args[0]) && function_map[i].func){
