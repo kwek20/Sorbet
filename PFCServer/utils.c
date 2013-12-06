@@ -51,15 +51,13 @@ int BestaatDeFile(char* bestandsnaam){
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     char* savedir = malloc(strlen(bestandsnaam));
-    strcpy(savedir, "");
     if (clients[*sockfd-4].username != NULL){
-        savedir = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+        if (realloc(savedir, strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
         strcpy(savedir, "");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
     strcat(savedir, bestandsnaam);
-    
     char buffer[BUFFERSIZE], statusCode[4];
     int readCounter = 0;
     
@@ -123,14 +121,14 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char* savedir = malloc(strlen(bestandsnaam));
-    strcpy(savedir, "");
     if (clients[*sockfd-4].username != NULL){
-        savedir = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+        if (realloc(savedir, strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
         strcpy(savedir, "");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
     strcat(savedir, bestandsnaam);
+    printf("dir: %s\n", savedir);
     
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;;
@@ -179,7 +177,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
  */
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
-    char *buffer = malloc(1);
+    char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
     char *filepath = malloc(strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
     strcpy(filepath, "");
     strcat(filepath, clients[*sockfd-4].username);
@@ -282,8 +280,8 @@ char *toString(int number){
  */
 void getEOF(char *to){
     strcpy(to, "");
-    char *pID = malloc(20);
-    sprintf(pID, "%d", STATUS_EOF);
+    char *pID = malloc(sizeof(int));
+    sprintf(pID, "%i", STATUS_EOF);
     strcat(to, pID);
     strcat(to, ":EOF");
 }

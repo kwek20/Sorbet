@@ -14,7 +14,7 @@
 #include "pfc.h"
 
 int switchResult(int* sockfd, char* buffer){
-    char** to = malloc(1);
+    char** to = malloc(sizeof(buffer)*sizeof(buffer[0]));
     int statusCode = 0;
     
     transform(buffer, to);

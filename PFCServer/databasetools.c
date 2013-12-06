@@ -43,7 +43,7 @@ int connectDB(){
       printf("Opened database successfully\n");
    }
    
-   //initDB(rc);
+   initDB(rc);
    return MOOI;
 }
 
@@ -74,9 +74,8 @@ sqlite3_stmt* selectQuery(char *query){
   const char *tail;
   
   if(sqlite3_prepare_v2(db, query, strlen(query), &res, &tail) != SQLITE_OK){
-    sqlite3_close(db);
-    printf("Can't retrieve data: %s\n", sqlite3_errmsg(db));
-    return(NULL);
+    //sqlite3_close(db);
+    return NULL;
   }
   
   return res;
@@ -101,7 +100,7 @@ void printRes(sqlite3_stmt *res){
 }
 
 int closeDB(){
-    sqlite3_close(db);
+    printf("sqlresult: %i\n", sqlite3_close_v2(db));
     return MOOI;
 }
 
@@ -125,8 +124,6 @@ int createUser(char **args, int amount){
     strcat (sql, args[2]);
     strcat (sql, "');");
     
-    printf("sql: %s\n", sql);
-    
     /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
@@ -140,24 +137,20 @@ int createUser(char **args, int amount){
 
 int userExists(char* name){
     char *sql = malloc(100);
+    int result = MOOI;
+    
     strcpy(sql, "SELECT * FROM USERS WHERE NAME = '");
     strcat(sql, name);
     strcat(sql, "';");
     
     sqlite3_stmt* res = selectQuery(sql);
     if (res == NULL) {
-        sqlite3_finalize(res);
-        return STUK;
+        result = STUK;
+    } else if(sqlite3_step(res) != SQLITE_ROW){
+        result = STUK;
     }
-    
-    int i;
-    if ((i = sqlite3_step(res)) == SQLITE_ROW){
-        sqlite3_finalize(res);
-        return MOOI;
-    } else {
-        sqlite3_finalize(res);
-        return STUK;
-    }
+    sqlite3_finalize(res);
+    return result;
 }
 
 char* getPassWord(char *name){
@@ -165,19 +158,20 @@ char* getPassWord(char *name){
     strcpy(password, "");
     
     if (userExists(name) == MOOI){
+        puts("User exists");
         char *sql = malloc(100);
         strcpy(sql, "SELECT PASSWORD FROM USERS WHERE NAME = '");
         strcat(sql, name);
         strcat(sql, "';");
-        
         sqlite3_stmt* res = selectQuery(sql);
         if (res != NULL) {
+            printf("0\n");
             if (sqlite3_step(res) == SQLITE_ROW){
                 strcpy(password, (char *)sqlite3_column_text(res, 0));
             }
         }
+        sqlite3_finalize(res);
     }
-    
     //shouldnt happen
     return password;
 }

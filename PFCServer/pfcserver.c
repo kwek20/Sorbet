@@ -45,7 +45,7 @@ const static struct {
     {"printtable", printTable, 0, "Prints all the data in the table defined", (const char * const []){}},
     {"adduser", createUser, 1, "Creates a user with the name and password", (const char * const []){"createuser"}},
     {"removeuser", removeUser, 0, "Removes the defined user", (const char * const []){}},
-    {"quit", NULL, 3, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop", "end"}}
+    {"quit", help, 3, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop", "end"}}
 };
 
 int sock, bestandfd, cur_cli = 0;
@@ -78,6 +78,12 @@ int main(int argc, char** argv) {
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         perror("socket");
         return -1;
+    }
+    
+    int setsock = 1;
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &setsock, sizeof(int))){
+        perror("Socket setting");
+        return STUK;
     }
 
     //maak bind via socket
@@ -118,7 +124,6 @@ int main(int argc, char** argv) {
         }
     }
     
-    pthread_join(cmd, NULL);
     return (EXIT_SUCCESS);
 }
 
@@ -132,7 +137,7 @@ void create(int *sock){
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
-    char** to = malloc(1);
+    char** to;
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -160,7 +165,7 @@ void create(int *sock){
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
         bzero(buffer, BUFFERSIZE);
-        if(recv(fd, buffer, BUFFERSIZE, 0) < 0){
+        if((to = malloc(recv(fd, buffer, BUFFERSIZE, 0))) < 0){
             perror("recv error");
             return;
         }
@@ -228,8 +233,8 @@ void SIGexit(int sig){
 
 void quit(){
     puts("\nStopping server.....");
-    closeDB();
     close(sock);
+    closeDB();
     exit(MOOI);
 }
 
@@ -266,33 +271,41 @@ struct sockaddr_in getServerAddr(int poort){
 void command(void){
     int amount;
     char *command;
-    char **args = malloc(1);
+    char **args = malloc(51);
     
-    int i, j;
+    int i, j, func_ret = MOOI;
     for ( ;; ){
         printf(" > ");
         command = getInput(50);
+        
         amount = transformWith(command, args, " ");
         
         if (amount < 1) continue;
-        if (strcasecmp(args[0], "stop") || strcasecmp(args[0], "exit") || strcasecmp(args[0], "quit") || strcasecmp(args[0], "end")) break;
+        if (strcasecmp(args[0], "stop") == 0 || strcasecmp(args[0], "exit")  == 0  || strcasecmp(args[0], "quit") == 0  || strcasecmp(args[0], "end") == 0 ) break;
         
         for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
             if (!strcasecmp(function_map[i].name, args[0]) && function_map[i].func){
-                function_map[i].func(args, amount);
+                func_ret = function_map[i].func(args, amount);
                 i = -1;
                 break;
             } else {
                 for (j=0; j<function_map[i].aliasesAmount; j++){
                     if (!strcasecmp(function_map[i].aliases[j], args[0]) && function_map[i].func){
-                        function_map[i].func(args, amount);
+                        func_ret = function_map[i].func(args, amount);
                         i = -1;
                         break;
                     }
                 }
             }
         }
-        if (i != -1) help(args, amount);
+        if (i != STUK ){ 
+            help(args, amount);
+        } else if (func_ret == STUK) {
+            char **newargs = malloc((sizeof(args)+1)*sizeof(args[0]));
+            memcpy(newargs+1, args, sizeof(args));
+            newargs[0] = "help";
+            help(newargs, amount+1);
+        }
     }
     
     quit();
@@ -335,7 +348,7 @@ int printClientInfo(struct clientsinfo client, int number){
 }
 
 int help(char **args, int amount){
-    int i;
+    int i, ret = STUK;
     if (amount > 1){
         int j;
         for (i = 0; i < (sizeof(function_map) / sizeof(function_map[0])); i++){
@@ -344,6 +357,7 @@ int help(char **args, int amount){
                 for (j=0; j < function_map[i].aliasesAmount; j++){
                     printf(" Alias: %s\n", function_map[i].aliases[j]);
                 }
+                ret = MOOI;
                 break;
             }
         }
@@ -357,7 +371,7 @@ int help(char **args, int amount){
         options[strlen(options)-2] = '\0';
         printf("Available commands: %s\n", options);
     }
-    return MOOI;
+    return ret;
 }
 
 int numcli(char **args, int amount){
@@ -366,8 +380,7 @@ int numcli(char **args, int amount){
 }
 
 int initDatabase(char **args, int amount){
-    connectDB();
-    return MOOI;
+    return connectDB();
 }
 
 int printTable(char **args, int amount){
@@ -379,12 +392,9 @@ int printTable(char **args, int amount){
     strcpy(sql, "SELECT * FROM ");
     strcat(sql, args[1]);
     strcat(sql, ";");
-   
-    puts(sql);
     
-    sqlite3_stmt* res = selectQuery(sql);
-    if (&res == NULL){
-        puts("Query failed!");
+    sqlite3_stmt *res = selectQuery(sql);
+    if (res == NULL){
         return STUK;
     }
     printRes(res);

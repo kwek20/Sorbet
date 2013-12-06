@@ -61,7 +61,7 @@ typedef struct clientsinfo{
     char* username;
 } clientsinfo;
 
-struct clientsinfo *clients;
+clientsinfo *clients;
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
