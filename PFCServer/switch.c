@@ -25,7 +25,7 @@ int switchResult(int* sockfd, char* buffer){
         printf("error with statusCode\n");
         return STUK;
     }
-    printf("Received packet: %i(%i)\n", statusCode, strlen(buffer));
+    printf("Received packet: %i(%i) data: %s\n", statusCode, strlen(buffer), buffer);
     
     switch(statusCode) {
         case STATUS_OK:       return STATUS_OK;

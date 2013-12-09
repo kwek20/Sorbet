@@ -62,7 +62,7 @@ int initDB(){
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
       fprintf(stderr, "SQL error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
+      //sqlite3_free(zErrMsg);
    }else{
       printf("Table created successfully\n");
    }
@@ -100,7 +100,7 @@ void printRes(sqlite3_stmt *res){
 }
 
 int closeDB(){
-    printf("sqlresult: %i\n", sqlite3_close_v2(db));
+    
     return MOOI;
 }
 

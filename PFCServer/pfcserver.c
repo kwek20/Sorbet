@@ -103,6 +103,7 @@ int main(int argc, char** argv) {
     connectDB();
     
     IS_CLIENT = STUK;
+    mkdir("userfolders", S_IRWXU);
     pthread_t cmd;
     pthread_create(&cmd, NULL, (void*)command, NULL);
     
@@ -178,7 +179,11 @@ void create(int *sock){
             clients[fd-4].username = malloc(strlen(to[1]));
             strcpy(clients[fd-4].username, to[1]);
             
-            mkdir(to[1], S_IRWXU);
+            char *folder = malloc(strlen(to[1]) + strlen("userfolders/"));
+            strcpy(folder, "userfolders/");
+            strcat(folder, to[1]);
+            
+            mkdir(folder, S_IRWXU);
             break;
         }
         
