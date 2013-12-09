@@ -150,6 +150,8 @@ int SendCredentials(int* sockfd){
      * server verstuurd 404 als dit mag of 203 als dit niet mag
      */
     char *username, *password, *buffer;
+    char *salt = "Sorbet";
+    char hex[SHA256_DIGEST_LENGTH*2];
     int sR = 0; //switchResult
 
     
@@ -164,13 +166,18 @@ int SendCredentials(int* sockfd){
         
         printf("Password: ");
         buffer = getInput(50);
-        password = malloc(strlen(buffer));
+        
+        printf("username: %s\n", username);
+        password = malloc(SHA256_DIGEST_LENGTH*2);
         strcpy(password,buffer);
+        hashPassword(password, salt, hex);
+        
+        printf("Username: %s - Password: %s\n", username, password);
 
         memset(buffer, 0 , strlen(buffer));
         
-        printf("ready to send\n"); //BRORD !!!! WERKT NIET
-        sendPacket(*sockfd, STATUS_AUTH, username, password, NULL);
+        printf("ready to send\n");
+        sendPacket(*sockfd, STATUS_AUTH, username, hex, NULL);
         if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
