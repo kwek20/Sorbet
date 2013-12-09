@@ -26,7 +26,6 @@
 #include <sqlite3.h>
 #include <openssl/sha.h>
 
-
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
 
@@ -62,6 +61,7 @@ typedef struct clientsinfo{
 } clientsinfo;
 
 clientsinfo *clients;
+int IS_CLIENT;
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);

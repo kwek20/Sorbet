@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
     argv[1] = "test.txt";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
+    IS_CLIENT = MOOI;
     pfcClient(argv);
     
     /*
@@ -50,6 +51,7 @@ int pfcClient(char** argv){
    }
    
    printStart();
+   clients = (struct clientsinfo*) malloc(sizeof(struct clientsinfo));
 
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}

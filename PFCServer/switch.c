@@ -23,7 +23,7 @@ int switchResult(int* sockfd, char* buffer){
     
     if((statusCode = atoi(to[0])) < 100){
         printf("error with statusCode\n");
-        return -1;
+        return STUK;
     }
     printf("Received packet: %i(%i)\n", statusCode, strlen(buffer));
     

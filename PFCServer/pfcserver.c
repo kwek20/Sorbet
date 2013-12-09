@@ -6,6 +6,7 @@
  */
 
 #include "pfc.h"
+
 #include <memory.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -101,6 +102,7 @@ int main(int argc, char** argv) {
     printStart();
     connectDB();
     
+    IS_CLIENT = STUK;
     pthread_t cmd;
     pthread_create(&cmd, NULL, (void*)command, NULL);
     
@@ -293,11 +295,14 @@ void command(void){
                     if (!strcasecmp(function_map[i].aliases[j], args[0]) && function_map[i].func){
                         func_ret = function_map[i].func(args, amount);
                         i = -1;
-                        break;
+                        goto end_loop;
                     }
                 }
+                
             }
         }
+        end_loop:
+        
         if (i != STUK ){ 
             help(args, amount);
         } else if (func_ret == STUK) {
@@ -306,6 +311,9 @@ void command(void){
             newargs[0] = "help";
             help(newargs, amount+1);
         }
+        
+        memset(command, 0, 50);
+        memset(args, 0, 51);
     }
     
     quit();

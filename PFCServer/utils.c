@@ -51,9 +51,9 @@ int BestaatDeFile(char* bestandsnaam){
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     char* savedir = malloc(strlen(bestandsnaam));
-    if (clients[*sockfd-4].username != NULL){
+    if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
-        strcpy(savedir, "");
+        strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
@@ -61,13 +61,22 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     char buffer[BUFFERSIZE], statusCode[4];
     int readCounter = 0;
     
-    if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
-        perror("Receive metadata OK error");
-        return STUK;
+    int aantal = 0;
+    for ( ;; ){
+        if (waitForOk(*sockfd) == MOOI){
+            printf("Received ok!");
+            break;
+        } else {
+            if (aantal >= 5)break;
+            
+            aantal++;
+        }
     }
+    aantal = 0;\
     
     if((OpenBestand(savedir)) < 0){return -1;}
-    if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+    puts(buffer);\
+    
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
@@ -78,12 +87,17 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
             return STUK;
         }
         
-        if((recv(*sockfd, buffer, readCounter, 0)) < 0) {
-            perror("Receive metadata OK error");
-            return STUK;
+        for ( ;; ){
+            if (waitForOk(*sockfd) == MOOI){
+                printf("Received ok!");
+                break;
+            } else {
+                if (aantal >= 5)break;
+
+                aantal++;
+            }
         }
-        
-        if(switchResult(sockfd, buffer) != STATUS_OK){return -1;}
+        aantal = 0;
     }
     if(readCounter < 0){
         return STUK;
@@ -120,13 +134,16 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
+    
     char* savedir = malloc(strlen(bestandsnaam));
-    if (clients[*sockfd-4].username != NULL){
+    
+    if (IS_CLIENT == STUK){\
         if (realloc(savedir, strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
-        strcpy(savedir, "");
+        strcpy(savedir, "userfolders/"");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
+    
     strcat(savedir, bestandsnaam);
     printf("dir: %s\n", savedir);
     
@@ -211,6 +228,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
             sprintf(buffer, "%i", STATUS_OLD);
             strcat(buffer, ":");
             strcat(buffer, bestandsnaam);
+            printf("Buffer: %s\n", buffer);
         } else {
             //same
             sendPacket(*sockfd, STATUS_SAME, NULL);
@@ -219,6 +237,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     }
     close(file);
     if (waitForOk(*sockfd) == MOOI){
+        printf("Buffer2: %s\n", buffer);
         return switchResult(sockfd, buffer);
     } else {
         return STUK;
@@ -306,7 +325,7 @@ int modifiedTime(char *bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int waitForOk(int sockfd){
-    char *buffer = malloc(1);
+    char *buffer = malloc(BUFFERSIZE);
     if((recv(sockfd, buffer, BUFFERSIZE, 0)) < 0) {
         perror("Receive OK error");
         return STUK;
