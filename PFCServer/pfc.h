@@ -89,7 +89,7 @@ void printStart(void);
 char* getInput(int max);
 void printArray(int length, char *array[]);
 
-int hashPassword();
+int hashPassword(char *password, char *salt, char to[]);
 int randomSalt(char *salt, int aantalBytes);
 int convertHashToString(char *stringHash, unsigned char hash[]);
 

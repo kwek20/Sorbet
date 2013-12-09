@@ -43,7 +43,7 @@ const static struct {
     {"numcli", numcli, 0, "Will show you the current amount of online clients", (const char * const []){}},
     {"clientinfo", clientinfo, 1, "Shows the info form the client defined, or all clients", (const char * const []){"cinfo"}},
     {"initdb", initDatabase, 0, "Initializes the database if it wasnt yet for some reason", (const char * const []){}},
-    {"printtable", printTable, 0, "Prints all the data in the table defined", (const char * const []){}},
+    {"printtable", printTable, 1, "Prints all the data in the table defined", (const char * const []){"showtable"}},
     {"adduser", createUser, 1, "Creates a user with the name and password", (const char * const []){"createuser"}},
     {"removeuser", removeUser, 0, "Removes the defined user", (const char * const []){}},
     {"quit", help, 3, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop", "end"}}

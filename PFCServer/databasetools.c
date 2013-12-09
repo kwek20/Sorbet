@@ -54,16 +54,17 @@ int initDB(){
     
     /* Create SQL statement */
    sql = "CREATE TABLE IF NOT EXISTS USERS("  \
-          "ID INTEGER PRIMARY KEY   AUTOINCREMENT," \
-          "NAME           TEXT    NOT NULL UNIQUE," \
-          "PASSWORD       TEXT    NOT NULL);";
+         "ID             INTEGER PRIMARY KEY   AUTOINCREMENT," \
+         "NAME           TEXT    NOT NULL      UNIQUE," \
+         "PASSWORD       TEXT    NOT NULL," \
+         "SALT           TEXT    NOT NULL);";
 
    /* Execute SQL statement */
    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
    if( rc != SQLITE_OK ){
       fprintf(stderr, "SQL error: %s\n", zErrMsg);
       //sqlite3_free(zErrMsg);
-   }else{
+   } else {
       printf("Table created successfully\n");
    }
    return MOOI;
@@ -110,7 +111,7 @@ int closeDB(){
 int createUser(char **args, int amount){
     //updateDB(rc);
     char *zErrMsg = 0;
-    char *sql = malloc(100);
+    char *sql = malloc(SHA256_DIGEST_LENGTH*4 + strlen("');") + (strlen("', '")*2) + strlen("INSERT INTO USERS (NAME,PASSWORD,SALT) VALUES ('") + strlen(args[1]));
     int rc;
     
     if (amount <= 2){
@@ -118,10 +119,37 @@ int createUser(char **args, int amount){
         return STUK;
     }
     
-    strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD) VALUES ('");
+    //char salt[SHA256_DIGEST_LENGTH*2];
+    //randomSalt(salt, SHA256_DIGEST_LENGTH*2);
+    
+    //printf("Salty: %s\n", salt);
+    
+    char hex[SHA256_DIGEST_LENGTH*2];
+    
+    char *salt = "Sorbet";
+    hashPassword(args[2], salt, hex);
+    
+    char *saltrandom = "henk";
+    //randomSalt(saltrandom, SHA256_DIGEST_LENGTH*2);
+    printf("strlen %i\n", strlen(saltrandom));
+    
+    printf("Nieuw random salt: %s\n", saltrandom);
+    
+    char *password = malloc(SHA256_DIGEST_LENGTH*2);
+    
+    hashPassword(hex, saltrandom, password);
+    
+    
+
+    
+    printf("pwd: %s\n", password);
+    
+    strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD,SALT) VALUES ('");
     strcat (sql, args[1]);
     strcat (sql, "', '");
-    strcat (sql, args[2]);
+    strcat (sql, password);
+    strcat (sql, "', '");
+    strcat (sql, salt);
     strcat (sql, "');");
     
     /* Execute SQL statement */
@@ -131,7 +159,6 @@ int createUser(char **args, int amount){
        return STUK;
    } 
    printf("Sucessfully created user %s\n", args[1]);
-   
    return MOOI;
 }
 

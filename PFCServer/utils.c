@@ -337,35 +337,33 @@ int changeModTime(char *bestandsnaam, int time){
 /**
  * Functie hashed wachtwoorden voordat deze de database ingaan.
  * @return 0 if succesvol
- 
-int hashPassword() {
-    char ibuf[] = "ditismijnsupergeheimewachtwoord:>";
-    char salt[64];
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    char *stringHash = malloc(64);
+ */
+int hashPassword(char *password, char *salt, char to[]) {
+    //if(realloc(to, c)== NULL) return STUK;
+    
     SHA256_CTX ctx;
+    unsigned char *temp = malloc(SHA256_DIGEST_LENGTH);
     
     // Initialiseer struct
     SHA256_Init(&ctx);
     
     // Plaats wachtwoord in struct 
-    SHA256_Update(&ctx, ibuf, sizeof(ibuf) -1);
-    
+    SHA256_Update(&ctx, password,  strlen(password));
+
     // Genereer random salt
-    randomSalt(salt, 64);
-    
+    //randomSalt(salt, 64);
     // Voeg salt en wachtwoord samen
-    SHA256_Update(&ctx, salt, 64); 
+    SHA256_Update(&ctx, salt, strlen(salt)); 
     
     // Genereer de hash
-    SHA256_Final(hash, &ctx);
+    SHA256_Final(temp, &ctx);
     
     // Maak van Hex een String
-    convertHashToString(stringHash, hash);
+    convertHashToString(to, temp);
+    printf("stringhash %s\n", to);
     
     return MOOI;
 }
- * */
 
 /**
  * Functie wordt gebruikt om een willekeurig salt te genereren
