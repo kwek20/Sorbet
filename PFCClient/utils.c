@@ -117,16 +117,13 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
-    
     char* savedir = malloc(strlen(bestandsnaam));
-    
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
-    
     strcat(savedir, bestandsnaam);
     
     char buffer[BUFFERSIZE];
@@ -340,35 +337,28 @@ int changeModTime(char *bestandsnaam, int time){
 /**
  * Functie hashed wachtwoorden voordat deze de database ingaan.
  * @return 0 if succesvol
- 
-int hashPassword() {
-    char ibuf[] = "ditismijnsupergeheimewachtwoord:>";
-    char salt[64];
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    char *stringHash = malloc(64);
+ */
+int hashPassword(char *password, char *salt, char to[]) {
     SHA256_CTX ctx;
+    unsigned char *temp = malloc(SHA256_DIGEST_LENGTH);
     
     // Initialiseer struct
     SHA256_Init(&ctx);
     
     // Plaats wachtwoord in struct 
-    SHA256_Update(&ctx, ibuf, sizeof(ibuf) -1);
-    
-    // Genereer random salt
-    randomSalt(salt, 64);
-    
+    SHA256_Update(&ctx, password,  strlen(password));
+
     // Voeg salt en wachtwoord samen
-    SHA256_Update(&ctx, salt, 64); 
+    SHA256_Update(&ctx, salt, strlen(salt)); 
     
     // Genereer de hash
-    SHA256_Final(hash, &ctx);
+    SHA256_Final(temp, &ctx);
     
     // Maak van Hex een String
-    convertHashToString(stringHash, hash);
+    convertHashToString(to, temp);
     
     return MOOI;
 }
- * */
 
 /**
  * Functie wordt gebruikt om een willekeurig salt te genereren

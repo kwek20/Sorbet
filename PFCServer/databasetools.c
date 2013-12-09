@@ -119,37 +119,25 @@ int createUser(char **args, int amount){
         return STUK;
     }
     
-    //char salt[SHA256_DIGEST_LENGTH*2];
-    //randomSalt(salt, SHA256_DIGEST_LENGTH*2);
-    
-    //printf("Salty: %s\n", salt);
-    
     char hex[SHA256_DIGEST_LENGTH*2];
-    
     char *salt = "Sorbet";
+    // Hash wachtwoord met string: "moeilijkwachtwoordSorbet"
     hashPassword(args[2], salt, hex);
     
-    char *saltrandom = "henk";
-    //randomSalt(saltrandom, SHA256_DIGEST_LENGTH*2);
-    printf("strlen %i\n", strlen(saltrandom));
+    // Genereren random salt
+    char *saltrandom = malloc(SHA256_DIGEST_LENGTH*2);
+    randomSalt(saltrandom, SHA256_DIGEST_LENGTH*2);
     
-    printf("Nieuw random salt: %s\n", saltrandom);
-    
+    // Hash hex + salt
     char *password = malloc(SHA256_DIGEST_LENGTH*2);
-    
     hashPassword(hex, saltrandom, password);
-    
-    
-
-    
-    printf("pwd: %s\n", password);
     
     strcpy(sql, "INSERT INTO USERS (NAME,PASSWORD,SALT) VALUES ('");
     strcat (sql, args[1]);
     strcat (sql, "', '");
     strcat (sql, password);
     strcat (sql, "', '");
-    strcat (sql, salt);
+    strcat (sql, saltrandom);
     strcat (sql, "');");
     
     /* Execute SQL statement */

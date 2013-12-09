@@ -339,8 +339,6 @@ int changeModTime(char *bestandsnaam, int time){
  * @return 0 if succesvol
  */
 int hashPassword(char *password, char *salt, char to[]) {
-    //if(realloc(to, c)== NULL) return STUK;
-    
     SHA256_CTX ctx;
     unsigned char *temp = malloc(SHA256_DIGEST_LENGTH);
     
@@ -350,8 +348,6 @@ int hashPassword(char *password, char *salt, char to[]) {
     // Plaats wachtwoord in struct 
     SHA256_Update(&ctx, password,  strlen(password));
 
-    // Genereer random salt
-    //randomSalt(salt, 64);
     // Voeg salt en wachtwoord samen
     SHA256_Update(&ctx, salt, strlen(salt)); 
     
@@ -360,7 +356,6 @@ int hashPassword(char *password, char *salt, char to[]) {
     
     // Maak van Hex een String
     convertHashToString(to, temp);
-    printf("stringhash %s\n", to);
     
     return MOOI;
 }
