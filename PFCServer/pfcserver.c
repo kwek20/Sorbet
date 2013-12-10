@@ -16,7 +16,7 @@ void setupSIG();
 void SIGexit(int sig);
 
 void quit();
-void stopClient(int fd);
+void stopClient(SSL *ssl, SSL_CTX *ctx, int fd);
 
 void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
@@ -136,11 +136,22 @@ int main(int argc, char** argv) {
  * @param sock the socket the server created
  */
 void create(int *sock){
+    
+    
     //init vars
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
     char** to;
+    
+    SSL_CTX *ctx;
+    SSL *ssl;
+
+    SSL_library_init();
+
+    // Init and load SSL
+    ctx = InitServerCTX();        /* initialize SSL */
+    LoadCertificates(ctx, CERTIFICATE, CERTIFICATE); /* load certs */
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -155,6 +166,19 @@ void create(int *sock){
     char *ip;
     ip = inet_ntoa(client_addr.sin_addr);
     int poort = htons(client_addr.sin_port);
+    
+    //  SSL connect
+        //int client = accept(server, (struct sockaddr*)&addr, &len);  /* accept connection as usual */
+        //printf("Connection: %s:%d\n",inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+    ssl = SSL_new(ctx);              /* get new SSL state with context */
+    SSL_set_fd(ssl, fd);      /* set connection socket to SSL state */
+    
+    if ( SSL_accept(ssl) == STUK )     /* do SSL-protocol accept */
+    {
+        ERR_print_errors_fp(stderr);
+    }
+    
+    // Servlet(ssl);         /* service connection */
 
     //add to the list
     clients[fd-4].client = client_addr;
@@ -168,13 +192,13 @@ void create(int *sock){
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
         bzero(buffer, BUFFERSIZE);
-        if((to = malloc(recv(fd, buffer, BUFFERSIZE, 0))) < 0){
-            perror("recv error");
+        if((to = malloc(receiveSSL(ssl, buffer))) < 0){
+            perror("receive error");
             return;
         }
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
-            sendPacket(fd, STATUS_AUTHOK, NULL);
+            sendPacket(ssl, STATUS_AUTHOK, NULL);
             //add username
             clients[fd-4].username = malloc(strlen(to[1]));
             strcpy(clients[fd-4].username, to[1]);
@@ -188,10 +212,10 @@ void create(int *sock){
         }
         
         if(i < 2){
-            sendPacket(fd, STATUS_AUTHFAIL, NULL);
+            sendPacket(ssl, STATUS_AUTHFAIL, NULL);
         } else {
-            sendPacket(fd, STATUS_CNA, NULL);
-            stopClient(fd);
+            sendPacket(ssl, STATUS_CNA, NULL);
+            stopClient(ssl, ctx, fd);
             return;
         }
     }
@@ -200,8 +224,8 @@ void create(int *sock){
     //loop forever until client stops
     for ( ;; ){
         //receive info
-        if ((rec = recv(fd, buffer, sizeof(buffer),0)) < 0){
-            perror("recv");
+        if ((rec = receiveSSL(ssl, buffer)) < 0){
+            perror("receive");
             printf("Client error! Stopping... \n");
             break;
         } else if (rec == 0){
@@ -210,7 +234,7 @@ void create(int *sock){
             break;
         } else {
             //good
-            if ((result = switchResult(&fd, buffer)) == STUK){
+            if ((result = switchResult(ssl, buffer)) == STUK){
                 //error
                 break;
             } else {
@@ -218,7 +242,7 @@ void create(int *sock){
             }
         }
     }
-    stopClient(fd);
+    stopClient(ssl, ctx, fd);
 }
 
 /**
@@ -245,7 +269,11 @@ void quit(){
     exit(MOOI);
 }
 
-void stopClient(int fd){
+void stopClient(SSL *ssl, SSL_CTX *ctx, int fd){
+    
+    SSL_CTX_free(ctx);         /* release context */
+    SSL_free(ssl);         /* release SSL state */
+    
     printf("Client stopped\n");
     memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
     close(fd);
