@@ -13,14 +13,13 @@
 
 struct sockaddr_in serv_addr;
 
-int SendCredentials(SSL *ssl);
-SSL_CTX* InitCTX();
+int SendCredentials(int* sockfd);
 
 int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     argc = 3;
-    argv[1] = "test.txt";
+    //argv[1] = "test.txt";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     IS_CLIENT = MOOI;
@@ -40,11 +39,6 @@ int main(int argc, char** argv) {
  */
 int pfcClient(char** argv){
    int sockfd;
-   SSL_CTX *ctx;
-   SSL *ssl;
-   
-   SSL_library_init();
-   ctx = InitCTX();
 
    if((ServerGegevens(argv[2])) < 0){
        exit(EXIT_FAILURE);
@@ -56,44 +50,16 @@ int pfcClient(char** argv){
        exit(EXIT_FAILURE);
    }
    
-   ssl = SSL_new(ctx);      /* create new SSL connection state */
-   //SSL_set_fd(ssl, sockfd);    /* attach the socket descriptor */
-    
-   
    printStart();
    clients = (struct clientsinfo*) malloc(sizeof(struct clientsinfo));
 
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
-   
-   SSL_set_fd(ssl, sockfd);
-   if ( SSL_connect(ssl) == STUK ){ERR_print_errors_fp(stderr);}
-   
-   if(SendCredentials(ssl) != MOOI){exit(EXIT_FAILURE);}
-   if(ModifyCheckClient(ssl, argv[1]) < 0){
+   if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
+   if(ModifyCheckClient(&sockfd, argv[1]) < 0){
        printf("error bij ModifyCheckClient\n");
        exit(EXIT_FAILURE);
    }
-   
-   SSL_free(ssl); 
-   SSL_CTX_free(ctx); 
-   
    exit(EXIT_FAILURE);
-}
-
-SSL_CTX* InitCTX(){
-    SSL_METHOD *method;
-    SSL_CTX *ctx;
-
-    OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
-    SSL_load_error_strings();   /* Bring in and register error messages */
-    method = TLSv1_client_method();  /* Create new client-method instance */
-    ctx = SSL_CTX_new(method);   /* Create new context */
-    if ( ctx == NULL )
-    {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-    return ctx;
 }
 /**
  * Functie serv_addr vullen
@@ -148,7 +114,7 @@ int ConnectNaarServer(int* sockfd){
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
  * @return 0 if succesvol. -1 if failed.
  */
-int ModifyCheckClient(SSL *ssl, char* bestandsnaam){
+int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     struct stat bestandEigenschappen;
     stat(bestandsnaam, &bestandEigenschappen);
     
@@ -158,16 +124,16 @@ int ModifyCheckClient(SSL *ssl, char* bestandsnaam){
     
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
-    sendPacket(ssl, STATUS_MODCHK, bestandsnaam, seconden, NULL);
+    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
     
     // Wacht op antwoord modifycheck van server
-    if((readCounter = receiveSSL(ssl, buffer)) <= 0) {
+    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
         //printf("%s(%i)\n", buffer, readCounter);
         perror("Receive modififycheck result error");
         return STUK;
     }
-    sendPacket(ssl, STATUS_OK, NULL);
-    switchResult(ssl, buffer);
+    sendPacket(*sockfd, STATUS_OK, NULL);
+    switchResult(sockfd, buffer);
     
     return MOOI;
 }
@@ -177,7 +143,7 @@ int ModifyCheckClient(SSL *ssl, char* bestandsnaam){
  * @param sockfd
  * @return 
  */
-int SendCredentials(SSL *ssl){
+int SendCredentials(int* sockfd){
     
      /*
      * client verstuurd verzoek om in te loggen (302:username:password)
@@ -208,13 +174,13 @@ int SendCredentials(SSL *ssl){
         memset(buffer, 0 , strlen(buffer));
         
         printf("ready to send\n");
-        sendPacket(ssl, STATUS_AUTH, username, hex, NULL);
-        if((receiveSSL(ssl, buffer)) < 0) {
+        sendPacket(*sockfd, STATUS_AUTH, username, hex, NULL);
+        if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
         }
 
-        sR = switchResult(ssl, buffer);
+        sR = switchResult(sockfd, buffer);
         switch(sR){
             case STUK: return STUK;
             case STATUS_AUTHFAIL: printf("Username or Password incorrect\n"); continue;
