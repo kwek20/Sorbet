@@ -26,6 +26,11 @@
 #include <sqlite3.h>
 #include <openssl/sha.h>
 
+#include <malloc.h>
+#include <resolv.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
 
@@ -33,6 +38,8 @@
 #define MOOI 0
 
 #define MAX_CLI 10
+
+#define CERTIFICATE "mycert.pem"
 
 // 1xx OK en gerelateerde statussen
 #define STATUS_OK  100 // OK (bevestigingscode)
@@ -67,18 +74,18 @@ int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
 int ConnectNaarServer(int* sockfd);
-int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
+int FileTransferSend(SSL *ssl, char* bestandsnaam);
+int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
-int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
-int ModifyCheckClient(int* sockfd, char* bestandsnaam);
+int ModifyCheckServer(SSL *ssl, char* bestandsnaam, char* timeleft);
+int ModifyCheckClient(SSL *ssl, char* bestandsnaam);
 
 int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 
-int switchResult(int* sockfd, char* buffer);
-int sendPacket(int fd, int packet, ...);
-int waitForOk(int sockfd);
+int switchResult(SSL *ssl, char *buffer);
+int sendPacket(SSL *ssl, int packet, ...);
+int waitForOk(SSL *ssl);
 
 int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
@@ -93,7 +100,7 @@ int hashPassword(char *password, char *salt, char to[]);
 int randomSalt(char *salt, int aantalBytes);
 int convertHashToString(char *stringHash, unsigned char hash[]);
 
-int ConnectRefused(int* sockfd);
+int ConnectRefused(SSL *ssl);
 
 //DB - Will be edited
 int callback(void *NotUsed, int argc, char **argv, char **azColName);
@@ -115,3 +122,9 @@ int sendCredentials();
 int writePasswordToLocalDB(int rc);
 
 char* getSalt(char *name);
+
+int receiveSSL(SSL *ssl, char *buffer);
+
+SSL_CTX* InitServerCTX(void);
+void LoadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile);
+void ShowCerts(SSL* ssl);
