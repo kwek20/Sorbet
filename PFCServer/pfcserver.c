@@ -425,8 +425,14 @@ int printTable(char **args, int amount){
 
 int ReceiveCredentials(char* username, char* password){
     int temp = 0;
+    char saltedPassword[SHA256_DIGEST_LENGTH*2];
+    char *salt = getSalt(username);
     
-    if(strcmp(password, getPassWord(username)) != 0){
+    hashPassword(password, salt, saltedPassword);
+    
+    
+    
+    if(strcmp(saltedPassword, getPassWord(username)) != 0){
         printf("password fail temp: %i\n",temp);
         return STUK;
     }

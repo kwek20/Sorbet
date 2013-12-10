@@ -113,3 +113,5 @@ char* getPassWord(char *name);
 int checkCredentials();
 int sendCredentials();
 int writePasswordToLocalDB(int rc);
+
+char* getSalt(char *name);

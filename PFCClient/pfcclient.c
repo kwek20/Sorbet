@@ -151,7 +151,7 @@ int SendCredentials(int* sockfd){
      */
     char *username, *password, *buffer;
     char *salt = "Sorbet";
-    char hex[SHA256_DIGEST_LENGTH*2];
+    char hex[SHA256_DIGEST_LENGTH*2+1];
     int sR = 0; //switchResult
 
     
@@ -167,13 +167,10 @@ int SendCredentials(int* sockfd){
         printf("Password: ");
         buffer = getInput(50);
         
-        printf("username: %s\n", username);
-        password = malloc(SHA256_DIGEST_LENGTH*2);
+        password = malloc(strlen(buffer));
         strcpy(password,buffer);
         hashPassword(password, salt, hex);
         
-        printf("Username: %s - Password: %s\n", username, password);
-
         memset(buffer, 0 , strlen(buffer));
         
         printf("ready to send\n");

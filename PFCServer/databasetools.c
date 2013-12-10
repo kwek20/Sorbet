@@ -201,6 +201,27 @@ int removeUser(char **args, int amount){
     return MOOI;
 }
 
+char* getSalt(char *name) {
+    char *salt = malloc(SHA256_DIGEST_LENGTH * 2);
+    strcpy(salt, "");
+
+    char *sql = malloc(100);
+    strcpy(sql, "SELECT SALT FROM USERS WHERE NAME = '");
+    strcat(sql, name);
+    strcat(sql, "';");
+    sqlite3_stmt* res = selectQuery(sql);
+    if (res != NULL) {
+        printf("0\n");
+        if (sqlite3_step(res) == SQLITE_ROW) {
+            strcpy(salt, (char *) sqlite3_column_text(res, 0));
+        }
+    }
+    sqlite3_finalize(res);
+    //shouldnt happen
+    return salt;
+}
+
+
 int checkCredentials(){
     // Password == selectDB();
     return MOOI;
