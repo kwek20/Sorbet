@@ -173,14 +173,12 @@ char* getPassWord(char *name){
     strcpy(password, "");
     
     if (userExists(name) == MOOI){
-        puts("User exists");
         char *sql = malloc(100);
         strcpy(sql, "SELECT PASSWORD FROM USERS WHERE NAME = '");
         strcat(sql, name);
         strcat(sql, "';");
         sqlite3_stmt* res = selectQuery(sql);
         if (res != NULL) {
-            printf("0\n");
             if (sqlite3_step(res) == SQLITE_ROW){
                 strcpy(password, (char *)sqlite3_column_text(res, 0));
             }

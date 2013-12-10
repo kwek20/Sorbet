@@ -13,7 +13,7 @@
 
 struct sockaddr_in serv_addr;
 
-int SendCredentials(int* sockfd);
+int SendCredentials(SSL *ssl);
 SSL_CTX* InitCTX();
 
 int main(int argc, char** argv) {
@@ -75,7 +75,7 @@ int pfcClient(char** argv){
    exit(EXIT_FAILURE);
 }
 SSL_CTX* InitCTX(){
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL_CTX *ctx;
 
     OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
@@ -144,24 +144,28 @@ int ConnectNaarServer(int* sockfd){
  */
 int ModifyCheckClient(SSL *ssl, char* bestandsnaam){
     struct stat bestandEigenschappen;
-    stat(bestandsnaam, &bestandEigenschappen);
-    
     char statusCode[4], seconden[40];
     char* buffer = malloc(BUFFERSIZE);
     int readCounter = 0;
     
-    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
+    if((BestaatDeFile(bestandsnaam)) == MOOI){
+        stat(bestandsnaam, &bestandEigenschappen);
+        sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
+    } else {
+        strcpy(seconden,"0");
+    }
     sprintf(statusCode, "%d", STATUS_MODCHK);
     sendPacket(ssl, STATUS_MODCHK, bestandsnaam, seconden, NULL);
-    
     // Wacht op antwoord modifycheck van server
-    if((readCounter = receiveSSL(ssl, buffer)) <= 0) {
+    if((readCounter = receiveSSL(ssl, buffer)) < 0) {
         //printf("%s(%i)\n", buffer, readCounter);
         perror("Receive modififycheck result error");
         return STUK;
     }
     sendPacket(ssl, STATUS_OK, NULL);
-    switchResult(ssl, buffer);
+    if(switchResult(ssl, buffer) == STATUS_FNA){
+        printf("This file does not exist on the server\n");
+    }
     
     return MOOI;
 }

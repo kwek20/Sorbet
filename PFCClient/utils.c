@@ -50,6 +50,7 @@ int BestaatDeFile(char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferSend(SSL *ssl, char* bestandsnaam){
+    printf("ModCheckServer SSL_get_fd(ssl): %i | bestandsnaam %s\n",SSL_get_fd(ssl),bestandsnaam);
     char* savedir = malloc(strlen(bestandsnaam));
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[SSL_get_fd(ssl)-4].username)) == NULL) return STUK;
@@ -117,25 +118,29 @@ int FileTransferSend(SSL *ssl, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
+    printf("ModCheckServer SSL_get_fd(ssl): %i | bestandsnaam %s\n",SSL_get_fd(ssl),bestandsnaam);
     char* savedir = malloc(strlen(bestandsnaam));
+    strcpy(savedir, "");
+    
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[SSL_get_fd(ssl)-4].username)) == NULL) return STUK;
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[SSL_get_fd(ssl)-4].username);
         strcat(savedir, "/");
     }
-    strcat(savedir, bestandsnaam);
     
+    strcat(savedir, bestandsnaam);
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;
-    
+    printf("savedir: %s\n",savedir);
+    puts("test 1");
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         perror("open");
         return STUK;
     }
+    puts("test 2");
     sendPacket(ssl, STATUS_OK, NULL);
-    
     printf("TIJD: %i\n", time);
     
     for ( ;; ){
@@ -159,7 +164,7 @@ int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
             write(file, buffer, rec);
 
             //clear received data
-            bzero(buffer, BUFFERSIZE);
+            bzero(buffer, strlen(buffer));
         }
     }
     changeModTime(savedir, time);
@@ -194,13 +199,16 @@ int ModifyCheckServer(SSL *ssl, char *bestandsnaam, char* timeleft){
     strcat(savedir, bestandsnaam);
     
     if ((file = open(savedir, O_RDONLY, 0666)) < 0){
-		sendPacket(ssl, STATUS_OLD, bestandsnaam, NULL);
-        
+        if (time == 0){
+            sendPacket(ssl, STATUS_FNA, bestandsnaam, NULL);
+            return STUK;
+        }
         sprintf(buffer, "%i", STATUS_NEW);
         strcat(buffer, ":");
         strcat(buffer, bestandsnaam);
         strcat(buffer, ":");
         strcat(buffer, toString(time));
+        
     } else {
         int owntime;
         if ((owntime = modifiedTime(savedir)) < time){
@@ -213,6 +221,8 @@ int ModifyCheckServer(SSL *ssl, char *bestandsnaam, char* timeleft){
             strcat(buffer, bestandsnaam);
             strcat(buffer, ":");
             strcat(buffer, timeleft);
+            
+            printf("else status_old\n");
         } else if (owntime > time){
             //own file newer  
             sendPacket(ssl, STATUS_NEW, bestandsnaam, toString(owntime), NULL);
@@ -227,7 +237,10 @@ int ModifyCheckServer(SSL *ssl, char *bestandsnaam, char* timeleft){
         }
     }
     close(file);
+    
+    printf("test\n");
     if (waitForOk(ssl) == MOOI){
+        printf("na waitforok\n");
         return switchResult(ssl, buffer);
     } else {
         return STUK;
@@ -278,9 +291,8 @@ int sendPacket(SSL *ssl, int packet, ...){
  * @return de meegegeven integer als string
  */
 char *toString(int number){
-    char *nr = malloc(sizeof(int) + strlen("\0"));
+    char *nr = malloc(sizeof(int));
     sprintf(nr, "%i", number);
-    strcat(nr, "\0");
     return nr;
 }
 
@@ -317,7 +329,7 @@ int modifiedTime(char *bestandsnaam){
  */
 int waitForOk(SSL *ssl){
     char *buffer = malloc(BUFFERSIZE);
-    if((receiveSSL(ssl, BUFFERSIZE) < 0)) {
+    if((receiveSSL(ssl, buffer) < 0)) {
         perror("Receive OK error");
         return STUK;
     }
@@ -326,16 +338,16 @@ int waitForOk(SSL *ssl){
     return MOOI;
 }
 
-int receiveSSL(SSL *ssl, char *buffer)
-{
+int receiveSSL(SSL *ssl, char *buffer){
     int readSize;
-    
-    if((readSize = SSL_read(ssl, buffer, BUFFERSIZE)) < 0)
-    {
-           perror("SSL receive error");
+    bzero(buffer,strlen(buffer));
+    if((readSize = SSL_read(ssl, buffer, BUFFERSIZE)) < 0){           
+           //printf("readSize: %i\n",readSize);     
+           SSL_get_error(ssl, readSize);
+           //("ErrorCode: %i\n",readSize);
            return STUK;
     }
-    
+    //printf("fd %i | recieveSSL: %s\n",SSL_get_fd(ssl),buffer);
     return readSize;
 }
 /**

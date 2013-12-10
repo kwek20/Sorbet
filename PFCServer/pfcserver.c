@@ -170,7 +170,6 @@ void create(int *sock){
         //printf("Connection: %s:%d\n",inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
     ssl = SSL_new(ctx);              /* get new SSL state with context */
     SSL_set_fd(ssl, fd);      /* set connection socket to SSL state */
-    
     if ( SSL_accept(ssl) == STUK )     /* do SSL-protocol accept */
     {
         ERR_print_errors_fp(stderr);
@@ -179,6 +178,7 @@ void create(int *sock){
     // Servlet(ssl);         /* service connection */
 
     //add to the list
+    
     clients[fd-4].client = client_addr;
     
     //print information
@@ -189,10 +189,10 @@ void create(int *sock){
     
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
-        bzero(buffer, BUFFERSIZE);
-        if((to = malloc(receiveSSL(ssl, BUFFERSIZE))) < 0){
+        bzero(buffer, strlen(buffer));
+        if((to = malloc(receiveSSL(ssl, buffer))) < 0){
             perror("receive error");
-            return;
+            continue;
         }
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
@@ -222,10 +222,11 @@ void create(int *sock){
     
     //End of Login
     printf("user %s has logged in, awaiting orders.\n", clients[fd-4].username);
+    
     //loop forever until client stops
     for ( ;; ){
         //receive info
-        if ((rec = receiveSSL(ssl, BUFFERSIZE)) < 0){
+        if ((rec = receiveSSL(ssl, buffer)) < 0){
             perror("receive");
             printf("Client error! Stopping... \n");
             break;
@@ -242,7 +243,7 @@ void create(int *sock){
                 //wooo
             }
         }
-        bzero(buffer, BUFFERSIZE);
+        bzero(buffer, strlen(buffer));
     }
     stopClient(ssl, ctx, fd);
 }
@@ -261,6 +262,7 @@ void setupSIG(){
  * @param sig the sig which ends
  */
 void SIGexit(int sig){
+    printf("Detected sig : %i", sig);
     quit();
 }
 
@@ -273,8 +275,8 @@ void quit(){
 
 void stopClient(SSL *ssl, SSL_CTX *ctx, int fd){
     
-    SSL_CTX_free(ctx);         /* release context */
-    SSL_free(ssl);         /* release SSL state */
+    //SSL_CTX_free(ctx);         /* release context */
+    //SSL_free(ssl);         /* release SSL state */
     
     printf("Client stopped\n");
     memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
