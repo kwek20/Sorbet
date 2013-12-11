@@ -12,11 +12,13 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
+#define CERTIFICATE "sorbet.pem"
+
 void setupSIG();
 void SIGexit(int sig);
 
 void quit();
-void stopClient(SSL *ssl, SSL_CTX *ctx, int fd);
+void stopClient(SSL *ssl);
 
 void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
@@ -31,6 +33,7 @@ int printTable(char **args, int amount);
 int printClientInfo(struct clientsinfo client, int number);
 
 int ReceiveCredentials(char* username, char* password);
+int LoadCertificates(char* CertFile, char* KeyFile);
 
 const static struct {
     const char *name;
@@ -51,22 +54,39 @@ const static struct {
 
 int sock, bestandfd, cur_cli = 0;
 sem_t client_wait; 
-
+SSL_CTX *ctx;
 /*
  * Main function, starts all threads
  */
 int main(int argc, char** argv) {
     int poort = NETWERKPOORT;
+    const SSL_METHOD *method;
+    
     if (argc > 1 && argv[1] != NULL){
         poort = atoi(argv[1]);
     }
 
     setupSIG();
-
+    
+    //SSL_CTX init
+    
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    method = TLSv1_server_method();
+    ctx = SSL_CTX_new(method);   /* create new context from method */
+    if ( ctx == NULL ){
+        ERR_print_errors_fp(stderr);
+        return STUK;
+    }
+    if(LoadCertificates(CERTIFICATE,CERTIFICATE) == STUK){
+        printf("load Certifcates went wrong\n");
+    }
+    
     //create semaphore
-    if (sem_init(&client_wait, 0, 0) < 0){
+    if(sem_init(&client_wait, 0, 0) < 0){
         perror("semaphore");
-        return -1;
+        return STUK;
     }
     //set it open
     sem_post(&client_wait);
@@ -141,16 +161,8 @@ void create(int *sock){
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
     char** to;
-    
-    SSL_CTX *ctx;
     SSL *ssl;
 
-    SSL_library_init();
-
-    // Init and load SSL
-    ctx = InitServerCTX();        /* initialize SSL */
-    LoadCertificates(ctx, CERTIFICATE, CERTIFICATE); /* load certs */
-    
     //open sem for new thread
     sem_post(&client_wait);
     
@@ -159,26 +171,22 @@ void create(int *sock){
     if ((fd = accept(*sock, (struct sockaddr *)&client_addr, &size)) < 0){
          perror("accept");
     }
-
+    
+    ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, fd);
+    if(SSL_accept(ssl) == STUK){
+        ERR_print_errors_fp(stderr);
+        return;
+    }
+        ERR_print_errors_fp(stderr);
+    fd = SSL_get_fd(ssl);
+    
     //data for later usage
     char *ip;
     ip = inet_ntoa(client_addr.sin_addr);
     int poort = htons(client_addr.sin_port);
 
-	    //  SSL connect
-        //int client = accept(server, (struct sockaddr*)&addr, &len);  /* accept connection as usual */
-        //printf("Connection: %s:%d\n",inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-    ssl = SSL_new(ctx);              /* get new SSL state with context */
-    SSL_set_fd(ssl, fd);      /* set connection socket to SSL state */
-    if ( SSL_accept(ssl) == STUK )     /* do SSL-protocol accept */
-    {
-        ERR_print_errors_fp(stderr);
-    }
-    
-    // Servlet(ssl);         /* service connection */
-
     //add to the list
-    
     clients[fd-4].client = client_addr;
     
     //print information
@@ -189,11 +197,14 @@ void create(int *sock){
     
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
-        bzero(buffer, strlen(buffer));
-        if((to = malloc(receiveSSL(ssl, buffer))) < 0){
-            perror("receive error");
-            continue;
+        bzero(buffer, BUFFERSIZE);
+        if((to = malloc(BUFFERSIZE)) < 0){
+            perror("recv error");
+            return;
         }
+        printf("voor SSLREAD login\n");
+        SSL_read(ssl, buffer, BUFFERSIZE);
+        ERR_print_errors_fp(stderr);
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(ssl, STATUS_AUTHOK, NULL);
@@ -213,7 +224,7 @@ void create(int *sock){
             sendPacket(ssl, STATUS_AUTHFAIL, NULL);
         } else {
             sendPacket(ssl, STATUS_CNA, NULL);
-            stopClient(ssl, ctx, fd);
+            stopClient(ssl);
             return;
         }
     }
@@ -222,12 +233,13 @@ void create(int *sock){
     
     //End of Login
     printf("user %s has logged in, awaiting orders.\n", clients[fd-4].username);
-    
     //loop forever until client stops
+    /* 
+     * Not in use for SSL implementation
     for ( ;; ){
         //receive info
-        if ((rec = receiveSSL(ssl, buffer)) < 0){
-            perror("receive");
+        if ((rec = recv(fd, buffer, BUFFERSIZE,0)) < 0){
+            perror("recv");
             printf("Client error! Stopping... \n");
             break;
         } else if (rec == 0){
@@ -243,9 +255,10 @@ void create(int *sock){
                 //wooo
             }
         }
-        bzero(buffer, strlen(buffer));
+        bzero(buffer, BUFFERSIZE);
     }
-    stopClient(ssl, ctx, fd);
+    */
+    stopClient(ssl);
 }
 
 /**
@@ -262,7 +275,6 @@ void setupSIG(){
  * @param sig the sig which ends
  */
 void SIGexit(int sig){
-    printf("Detected sig : %i", sig);
     quit();
 }
 
@@ -273,13 +285,12 @@ void quit(){
     exit(MOOI);
 }
 
-void stopClient(SSL *ssl, SSL_CTX *ctx, int fd){
-    
-    //SSL_CTX_free(ctx);         /* release context */
-    //SSL_free(ssl);         /* release SSL state */
+void stopClient(SSL *ssl){
+    int fd = SSL_get_fd(ssl);
     
     printf("Client stopped\n");
     memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
+    sem_post(&client_wait);
     close(fd);
     cur_cli--;
 }
@@ -466,6 +477,27 @@ int ReceiveCredentials(char* username, char* password){
     
     if(strcmp(saltedPassword, getPassWord(username)) != 0){
         printf("password fail temp: %i\n",temp);
+        return STUK;
+    }
+    return MOOI;
+}
+
+int LoadCertificates(char* CertFile, char* KeyFile){/* set the local certificate from CertFile */
+    if ( SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0 )
+    {
+        ERR_print_errors_fp(stderr);
+        return STUK;
+    }
+    /* set the private key from KeyFile (may be the same as CertFile) */
+    if ( SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0 )
+    {
+        ERR_print_errors_fp(stderr);
+        return STUK;
+    }
+    /* verify private key */
+    if ( !SSL_CTX_check_private_key(ctx) )
+    {
+        fprintf(stderr, "Private key does not match the public certificate\n");
         return STUK;
     }
     return MOOI;

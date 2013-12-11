@@ -24,10 +24,9 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 #include <sqlite3.h>
-#include <openssl/sha.h>
-
-#include <malloc.h>
 #include <resolv.h>
+#include <malloc.h>
+#include <openssl/sha.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -38,8 +37,6 @@
 #define MOOI 0
 
 #define MAX_CLI 10
-
-#define CERTIFICATE "mycert.pem"
 
 // 1xx OK en gerelateerde statussen
 #define STATUS_OK  100 // OK (bevestigingscode)
@@ -57,10 +54,8 @@
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
 #define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is.
 #define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server.
-#define STATUS_FNA 404 //Server geeft aan dat de file niet bestaat.
-
-#define STATUS_AUTHOK 410 //Server verteld de client dat de authenticatie gelukt is.
-#define STATUS_AUTHFAIL 411 //Server verteld de client dat de authenticatie is mislukt.
+#define STATUS_AUTHOK 404 //Server verteld de client dat de authenticatie gelukt is.
+#define STATUS_AUTHFAIL 405 //Server verteld de client dat de authenticatie is mislukt.
 
 #define LOGINATTEMPTS 3 //Binnen dit aantal moet de gebruiker het wachtwoord goed raden. Anders wordt de verbinding verbroken.
 
@@ -75,7 +70,7 @@ int IS_CLIENT;
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
-int ConnectNaarServer(int* sockfd);
+int ConnectNaarServer(SSL *ssl);
 int FileTransferSend(SSL *ssl, char* bestandsnaam);
 int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
@@ -85,7 +80,7 @@ int ModifyCheckClient(SSL *ssl, char* bestandsnaam);
 int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 
-int switchResult(SSL *ssl, char *buffer);
+int switchResult(SSL *ssl, char* buffer);
 int sendPacket(SSL *ssl, int packet, ...);
 int waitForOk(SSL *ssl);
 
@@ -124,9 +119,3 @@ int sendCredentials();
 int writePasswordToLocalDB(int rc);
 
 char* getSalt(char *name);
-
-int receiveSSL(SSL *ssl, char *buffer);
-
-SSL_CTX* InitServerCTX(void);
-void LoadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile);
-void ShowCerts(SSL* ssl);

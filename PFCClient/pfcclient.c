@@ -11,10 +11,12 @@
 
 #include "pfc.h"
 
+SSL_CTX *ctx;
+
 struct sockaddr_in serv_addr;
 
 int SendCredentials(SSL *ssl);
-SSL_CTX* InitCTX();
+void InitCTX();
 
 int main(int argc, char** argv) {
 
@@ -40,55 +42,50 @@ int main(int argc, char** argv) {
  */
 int pfcClient(char** argv){
    int sockfd;
-   SSL_CTX *ctx;
    SSL *ssl;
-   
-   SSL_library_init();
-   ctx = InitCTX();
    
    if((ServerGegevens(argv[2])) < 0){
        exit(EXIT_FAILURE);
    }
+   
+   SSL_library_init();
+   InitCTX();
    
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
        perror("Create socket error:");
        exit(EXIT_FAILURE);
    }
-   ssl = SSL_new(ctx);      /* create new SSL connection state */
    
    printStart();
    clients = (struct clientsinfo*) malloc(sizeof(struct clientsinfo));
 
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
-   SSL_set_fd(ssl, sockfd);
-   if ( SSL_connect(ssl) == STUK ){ERR_print_errors_fp(stderr);}
+   
+   ssl = SSL_new(ctx);      /* create new SSL connection state */
+   SSL_set_fd(ssl, sockfd);    /* attach the socket descriptor */
+   if (SSL_connect(ssl) == STUK){
+       ERR_print_errors_fp(stderr);
+       return STUK;
+   }
    
    if(SendCredentials(ssl) != MOOI){exit(EXIT_FAILURE);}
-   if(ModifyCheckClient(ssl, argv[1]) < 0){
-       printf("error bij ModifyCheckClient\n");
-       exit(EXIT_FAILURE);
-   }
-   SSL_free(ssl); 
-   SSL_CTX_free(ctx); 
-   
+//   if(ModifyCheckClient(&sockfd, argv[1]) < 0){
+//       printf("error bij ModifyCheckClient\n");
+//       exit(EXIT_FAILURE);
+//   }
    exit(EXIT_FAILURE);
 }
-SSL_CTX* InitCTX(){
-    const SSL_METHOD *method;
-    SSL_CTX *ctx;
 
+void InitCTX()
+{   const SSL_METHOD *method;
     OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
     SSL_load_error_strings();   /* Bring in and register error messages */
     method = TLSv1_client_method();  /* Create new client-method instance */
     ctx = SSL_CTX_new(method);   /* Create new context */
-    if ( ctx == NULL )
-    {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-    return ctx;
+    if ( ctx == NULL ){ERR_print_errors_fp(stderr);}
 }
+
 /**
  * Functie serv_addr vullen
  * @param ip Ascii ip van server 
@@ -144,28 +141,24 @@ int ConnectNaarServer(int* sockfd){
  */
 int ModifyCheckClient(SSL *ssl, char* bestandsnaam){
     struct stat bestandEigenschappen;
+    stat(bestandsnaam, &bestandEigenschappen);
+    
     char statusCode[4], seconden[40];
     char* buffer = malloc(BUFFERSIZE);
     int readCounter = 0;
     
-    if((BestaatDeFile(bestandsnaam)) == MOOI){
-        stat(bestandsnaam, &bestandEigenschappen);
-        sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
-    } else {
-        strcpy(seconden,"0");
-    }
+    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
     sendPacket(ssl, STATUS_MODCHK, bestandsnaam, seconden, NULL);
+    
     // Wacht op antwoord modifycheck van server
-    if((readCounter = receiveSSL(ssl, buffer)) < 0) {
+    if((readCounter = SSL_read(ssl, buffer, BUFFERSIZE)) <= 0) {
         //printf("%s(%i)\n", buffer, readCounter);
         perror("Receive modififycheck result error");
         return STUK;
     }
     sendPacket(ssl, STATUS_OK, NULL);
-    if(switchResult(ssl, buffer) == STATUS_FNA){
-        printf("This file does not exist on the server\n");
-    }
+    switchResult(ssl, buffer);
     
     return MOOI;
 }
@@ -207,7 +200,7 @@ int SendCredentials(SSL *ssl){
         
         printf("ready to send\n");
         sendPacket(ssl, STATUS_AUTH, username, hex, NULL);
-        if((receiveSSL(ssl, buffer)) < 0) {
+        if((SSL_read(ssl, buffer, BUFFERSIZE)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
         }

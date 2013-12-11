@@ -1,1 +1,0 @@
-gcc pfcserver.c switch.c utils.c -o server -lpthread -lsqlite -Wall
