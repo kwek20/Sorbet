@@ -13,22 +13,23 @@
 
 struct sockaddr_in serv_addr;
 
+
+int pfcClient(char** argv);
+int ServerGegevens(char* ip);
+int ConnectNaarServer(int* sockfd);
 int SendCredentials(int* sockfd);
+int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 
 int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
-    argc = 3;
+    //argc = 3;
     //argv[1] = "test.txt";
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     IS_CLIENT = MOOI;
     pfcClient(argv);
     
-    /*
-     * invoer bestand
-     * invoer ip server
-     */
     return (EXIT_SUCCESS);
 }
 
@@ -51,8 +52,6 @@ int pfcClient(char** argv){
    }
    
    printStart();
-   clients = (struct clientsinfo*) malloc(sizeof(struct clientsinfo));
-
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(ModifyCheckClient(&sockfd, argv[1]) < 0){
@@ -70,8 +69,6 @@ int ServerGegevens(char* ip){
 
     //memsets
    memset(&serv_addr, '\0', sizeof (serv_addr));
-
-
    /*
     * Vul juiste gegevens in voor server in struct serv_addr
     */
@@ -102,7 +99,7 @@ int ConnectNaarServer(int* sockfd){
         perror("Connect error:");
         return -1;
     }
-
+    
     printf("Connectie succesvol\n");
     return 0;
 }
@@ -150,26 +147,22 @@ int SendCredentials(int* sockfd){
      * server verstuurd 404 als dit mag of 203 als dit niet mag
      */
     char *username, *password, *buffer;
-    char *salt = "Sorbet";
     char hex[SHA256_DIGEST_LENGTH*2+1];
     int sR = 0; //switchResult
 
     
     for(;;){
         
-        printf("Username: ");
-        buffer = getInput(50);
+        buffer = invoerCommands("Username: ", 50);
         username = malloc(strlen(buffer));
         strcpy(username,buffer);
         
         memset(buffer, 0 , strlen(buffer));
         
-        printf("Password: ");
-        buffer = getInput(50);
-        
+        buffer = invoerCommands("Password: ", 50);
         password = malloc(strlen(buffer));
         strcpy(password,buffer);
-        hashPassword(password, salt, hex);
+        hashPassword(password, FIXEDSALT, hex);
         
         memset(buffer, 0 , strlen(buffer));
         
@@ -189,4 +182,22 @@ int SendCredentials(int* sockfd){
     }
     
     return STUK;
+}
+
+/**
+ * Deze functie vraagt input van de gebruiker. Er wordt tekst geprint voor de invoer. Bij een enter zal deze functie opnieuw om invoer vragen.
+ * @param tekstVoor de tekst die geprint wordt voor het commando
+ * @param aantalChars aantal characters dat de invoer maximaal mag hebben
+ * @return returns buffer pointer
+ */
+char* invoerCommands(char* tekstVoor, int aantalChars){
+    char* buffer;
+    for(;;){
+        printf("%s",tekstVoor);
+        buffer = getInput(aantalChars);
+        if(!strcmp("",buffer)){
+            continue;
+        }
+        return buffer;
+    }
 }

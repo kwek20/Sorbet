@@ -174,6 +174,14 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
 }
 
 /**
+ * Sends a packet to the fd defined
+ * @param fd The fd to send this packet to
+ * @param packet the packet number
+ * @param ... the values for this packet, end with NULL
+ * @return 1 if the packet was send succesfully. otherwise 0
+ */
+
+/**
  * Functie voor de server om te kijken of het bestand op de server nieuwer is of op de client
  * @param sockfd socket waarop gecontroleerd moet worden
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
@@ -238,13 +246,6 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     
 }
 
-/**
- * Sends a packet to the fd defined
- * @param fd The fd to send this packet to
- * @param packet the packet number
- * @param ... the values for this packet, end with NULL
- * @return 1 if the packet was send succesfully. otherwise 0
- */
 int sendPacket(int fd, int packet, ...){
     char *info = malloc(105);
     strcpy(info, "");
@@ -271,7 +272,7 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, bytes);
+    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
     return MOOI;
 }
 
@@ -281,7 +282,7 @@ int sendPacket(int fd, int packet, ...){
  * @return de meegegeven integer als string
  */
 char *toString(int number){
-    char *nr = malloc(sizeof(int) + strlen("\0"));
+    char *nr = malloc(10);
     sprintf(nr, "%i", number);
     strcat(nr, "\0");
     return nr;

@@ -12,6 +12,11 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
+//Server Only
+char* getPassWord(char *name);
+int checkCredentials();
+int sendCredentials();
+
 void setupSIG();
 void SIGexit(int sig);
 
@@ -442,3 +447,4 @@ int ReceiveCredentials(char* username, char* password){
     }
     return MOOI;
 }
+

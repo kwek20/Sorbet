@@ -26,13 +26,14 @@
 #include <sqlite3.h>
 #include <openssl/sha.h>
 
+
+//Server/Client Defines needed for general options
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
-
+#define MAX_CLI 10
+//Defines return values
 #define STUK -1
 #define MOOI 0
-
-#define MAX_CLI 10
 
 // 1xx OK en gerelateerde statussen
 #define STATUS_OK  100 // OK (bevestigingscode)
@@ -52,66 +53,69 @@
 #define STATUS_SAME 403 //Server geeft aan dat de file hetzelfde is als die op de server.
 #define STATUS_AUTHOK 404 //Server verteld de client dat de authenticatie gelukt is.
 #define STATUS_AUTHFAIL 405 //Server verteld de client dat de authenticatie is mislukt.
-
+// Login defines
 #define LOGINATTEMPTS 3 //Binnen dit aantal moet de gebruiker het wachtwoord goed raden. Anders wordt de verbinding verbroken.
+// Password protection
+#define FIXEDSALT "Sorbet"
 
+//De client vult hier true in. De server false. Dit is nodig voor sommige functies
+int IS_CLIENT;
+
+//File Functions
+int BestaatDeFile(char* fileName);
+int OpenBestand(char* bestandsnaam);
+int changeModTime(char *bestandsnaam, int time);
+int modifiedTime(char *bestandsnaam);
+
+//Communication Client Server
+int FileTransferSend(int* sockfd, char* bestandsnaam);
+int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
+int waitForOk(int sockfd);
+int ConnectRefused(int* sockfd);
+
+//String Editing
+int transform(char *text, char** to);
+int transformWith(char *text, char** to, char *delimit);
+char *toString(int number);
+void getEOF(char *to);
+
+//Input user
+char* getInput(int max);
+char* invoerCommands(char* tekstVoor, int aantalChars);
+
+//Switch functions
+int switchResult(int* sockfd, char* buffer);
+int sendPacket(int fd, int packet, ...);
+
+//Visual presentation
+void printStart(void);
+void printArray(int length, char *array[]);
+
+//Password Hashing
+int hashPassword(char *password, char *salt, char to[]);
+int randomSalt(char *salt, int aantalBytes);
+int convertHashToString(char *stringHash, unsigned char hash[]);
+
+//DB - Will be edited
+int callback(void *NotUsed, int argc, char **argv, char **azColName);
+int connectDB();
+int initDB();
+int createUser(char **args, int amount); //server only
+int removeUser(char **args, int amount); //server only
+int userExists(char* name);
+int closeDB();
+char* getSalt(char *name); //server only
+void printRes(sqlite3_stmt *res);
+int writePasswordToLocalDB(int rc);
+sqlite3_stmt* selectQuery(char *query);
+
+//Server Only
+int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
+
+//Struct om username/IP van client in op te slaan
 typedef struct clientsinfo{
     struct sockaddr_in client;
     char* username;
 } clientsinfo;
 
 clientsinfo *clients;
-int IS_CLIENT;
-
-int pfcClient(char** argv);
-int ServerGegevens(char* ip);
-int BestaatDeFile(char* fileName);
-int ConnectNaarServer(int* sockfd);
-int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
-int OpenBestand(char* bestandsnaam);
-int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
-int ModifyCheckClient(int* sockfd, char* bestandsnaam);
-
-int transform(char *text, char** to);
-int transformWith(char *text, char** to, char *delimit);
-
-int switchResult(int* sockfd, char* buffer);
-int sendPacket(int fd, int packet, ...);
-int waitForOk(int sockfd);
-
-int changeModTime(char *bestandsnaam, int time);
-int modifiedTime(char *bestandsnaam);
-
-char *toString(int number);
-void getEOF(char *to);
-void printStart(void);
-char* getInput(int max);
-void printArray(int length, char *array[]);
-
-int hashPassword(char *password, char *salt, char to[]);
-int randomSalt(char *salt, int aantalBytes);
-int convertHashToString(char *stringHash, unsigned char hash[]);
-
-int ConnectRefused(int* sockfd);
-
-//DB - Will be edited
-int callback(void *NotUsed, int argc, char **argv, char **azColName);
-int connectDB();
-int initDB();
-
-void printRes(sqlite3_stmt *res);
-sqlite3_stmt* selectQuery(char *query);
-
-int closeDB();
-
-int createUser(char **args, int amount);
-int removeUser(char **args, int amount);
-int userExists(char* name);
-char* getPassWord(char *name);
-
-int checkCredentials();
-int sendCredentials();
-int writePasswordToLocalDB(int rc);
-
-char* getSalt(char *name);
