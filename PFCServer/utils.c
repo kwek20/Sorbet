@@ -125,7 +125,6 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
-        strcat(savedir, "/");
     }
     strcat(savedir, bestandsnaam);
     
@@ -134,8 +133,23 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
-        perror("open");
-        return STUK;
+        //file doesnt exist, lets create the folder shant we?
+        char **path = malloc(strlen(savedir));
+        puts(savedir);
+        int i, amount = transformWith(savedir, path, "/");
+        if (amount > 0){
+            char *folderpath = malloc(strlen(savedir) + strlen("userfolders/") + 100);
+            strcpy(folderpath, path[0]);
+            
+            for(i=1; i<amount-1; i++){
+                mkdir(folderpath, S_IRWXU);
+                printf("mkdir'd: %s, added %s\n", folderpath, path[i]);
+                strcat(folderpath, "/");
+                strcat(folderpath, path[i]);
+            }
+        }
+        
+        file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
     

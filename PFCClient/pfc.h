@@ -7,25 +7,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/time.h>
+
 #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <openssl/sha.h>
+
 #include <error.h>
 #include <errno.h>
 #include <string.h>
-#include <arpa/inet.h>
+
 #include <locale.h>
 #include <signal.h>
 #include <time.h>
-#include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <sys/stat.h>
 #include <stdarg.h>
 #include <sqlite3.h>
-#include <openssl/sha.h>
-
 
 //Server/Client Defines needed for general options
 #define BUFFERSIZE 4096

@@ -1,6 +1,6 @@
 /* 
  * File:   pfcclient.c
- * Author: Bartjan Zondag & Kevin Rosendaal
+ * Author: Bartjan Zondag & Kevin Rosendaal & Brord van Wierst
  * 
  */
 
@@ -10,18 +10,19 @@
  */
 
 #include "pfc.h"
+#include <fts.h>
 
 struct sockaddr_in serv_addr;
-
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int ConnectNaarServer(int* sockfd);
 int SendCredentials(int* sockfd);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
+int loopOverFiles(char **path, int* sockfd);
 
 int main(int argc, char** argv) {
-
+    
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
     //argc = 3;
     //argv[1] = "test.txt";
@@ -45,6 +46,14 @@ int pfcClient(char** argv){
        exit(EXIT_FAILURE);
    }
    
+   
+   if (argv[1] == NULL){
+       char cwd[1024];
+       getcwd(cwd, sizeof(cwd));
+       puts(cwd);
+       argv[1] = cwd;
+   }
+   
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
        perror("Create socket error:");
@@ -54,12 +63,51 @@ int pfcClient(char** argv){
    printStart();
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
-   if(ModifyCheckClient(&sockfd, argv[1]) < 0){
-       printf("error bij ModifyCheckClient\n");
-       exit(EXIT_FAILURE);
-   }
-   exit(EXIT_FAILURE);
+   
+   exit(loopOverFiles(argv + 1, &sockfd));
 }
+
+int loopOverFiles(char **path, int* sockfd){
+    FTS *ftsp;
+    FTSENT *p, *chp;
+    int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
+    
+    if ((ftsp = fts_open((char * const *) path, fts_options, 0)) == NULL) {
+         perror("fts_open");
+         return -1;
+    }
+    
+    /* Initialize ftsp with as many argv[] parts as possible. */
+    chp = fts_children(ftsp, 0);
+    if (chp == NULL) {
+           return 0;               /* no files to traverse */
+    }
+
+    while ((p = fts_read(ftsp)) != NULL) {
+        //puts(p->fts_path);
+        switch (p->fts_info) {
+            case FTS_D:
+                //directory
+                printf("Searchign in directory: %s\n", p->fts_path);
+                break;
+            case FTS_F:
+                //file
+                if(ModifyCheckClient(sockfd, p->fts_path) < 0){
+                    printf("error bij ModifyCheckClient\n");
+                    goto end;
+                }
+                printf("Synchronising file: %s\n", p->fts_path);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    end:
+    fts_close(ftsp);
+    return 0;
+}
+
 /**
  * Functie serv_addr vullen
  * @param ip Ascii ip van server 
@@ -129,10 +177,10 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
         perror("Receive modififycheck result error");
         return STUK;
     }
-    sendPacket(*sockfd, STATUS_OK, NULL);
-    switchResult(sockfd, buffer);
     
-    return MOOI;
+    
+    sendPacket(*sockfd, STATUS_OK, NULL);
+    return switchResult(sockfd, buffer);
 }
 
 /**
