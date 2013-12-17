@@ -178,7 +178,6 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
         return STUK;
     }
     
-    
     sendPacket(*sockfd, STATUS_OK, NULL);
     return switchResult(sockfd, buffer);
 }

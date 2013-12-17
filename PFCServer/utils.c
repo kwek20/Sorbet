@@ -134,26 +134,26 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         //file doesnt exist, lets create the folder shant we?
-        char **path = malloc(strlen(savedir));
-        puts(savedir);
+        char **path = malloc(strlen(savedir) + 100);
         int i, amount = transformWith(savedir, path, "/");
         if (amount > 0){
-            char *folderpath = malloc(strlen(savedir) + strlen("userfolders/") + 100);
-            strcpy(folderpath, path[0]);
-            
-            for(i=1; i<amount-1; i++){
-                mkdir(folderpath, S_IRWXU);
-                printf("mkdir'd: %s, added %s\n", folderpath, path[i]);
-                strcat(folderpath, "/");
+            char *folderpath = malloc(strlen(savedir));
+            strcpy(folderpath, "");
+            strcat(folderpath, "/");
+
+            for(i=0; i<amount-1; i++){
+                if (strcmp(path[i], "..") == 0) continue;
+                
                 strcat(folderpath, path[i]);
+                strcat(folderpath, "/");
+                mkdir(folderpath, S_IRWXU);
             }
         }
         
         file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (file < 0) return STUK;
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
-    
-    printf("TIJD: %i\n", time);
     
     for ( ;; ){
         if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
@@ -334,13 +334,13 @@ int modifiedTime(char *bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int waitForOk(int sockfd){
-    char *buffer = malloc(BUFFERSIZE);
-    if((recv(sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+    char *buffer = malloc(3);
+    if((recv(sockfd, buffer, 3, 0)) < 0) {
         perror("Receive OK error");
         return STUK;
     }
     
-    if(switchResult(&sockfd, buffer) != STATUS_OK){return STUK;}
+    if(switchResult(&sockfd, buffer) != STATUS_OK) return STUK;
     return MOOI;
 }
 /**

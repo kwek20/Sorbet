@@ -145,7 +145,6 @@ void create(int *sock){
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
     char buffer[BUFFERSIZE];
-    char** to;
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -173,11 +172,16 @@ void create(int *sock){
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
         bzero(buffer, BUFFERSIZE);
-        if((to = malloc(recv(fd, buffer, BUFFERSIZE, 0))) < 0){
+        int bytes = 0;
+        if((bytes = recv(fd, buffer, BUFFERSIZE, 0)) < 0){
             perror("recv error");
             return;
         }
+        puts("test1");
+        char** to = malloc(BUFFERSIZE + 100);
+        puts("test2");
         transform(buffer, to);
+        puts("test3");
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK, NULL);
             //add username
@@ -256,7 +260,7 @@ void quit(){
 
 void stopClient(int fd){
     printf("Client stopped\n");
-    memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
+    bzero(&clients[fd-4], sizeof(clients[fd-4]));
     close(fd);
     cur_cli--;
 }
