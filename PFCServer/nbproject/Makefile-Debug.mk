@@ -34,11 +34,15 @@ include Makefile
 OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
-OBJECTFILES=
+OBJECTFILES= \
+	${OBJECTDIR}/databasetools.o \
+	${OBJECTDIR}/pfcserver.o \
+	${OBJECTDIR}/switch.o \
+	${OBJECTDIR}/utils.o
 
 
 # C Compiler Flags
-CFLAGS=-V -lpthread -lsqlite3
+CFLAGS=-V -lpthread -lsqlite3 -lpolarssl
 
 # CC Compiler Flags
 CCFLAGS=
@@ -61,25 +65,25 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcserver: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcserver ${OBJECTFILES} ${LDLIBSOPTIONS}
 
-${OBJECTDIR}/databasetools.c.gch: databasetools.c 
+${OBJECTDIR}/databasetools.o: databasetools.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o $@ databasetools.c
+	${RM} "$@.d"
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/databasetools.o databasetools.c
 
-${OBJECTDIR}/pfcserver.c.gch: pfcserver.c 
+${OBJECTDIR}/pfcserver.o: pfcserver.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o $@ pfcserver.c
+	${RM} "$@.d"
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/pfcserver.o pfcserver.c
 
-${OBJECTDIR}/switch.c.gch: switch.c 
+${OBJECTDIR}/switch.o: switch.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o $@ switch.c
+	${RM} "$@.d"
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/switch.o switch.c
 
-${OBJECTDIR}/utils.c.gch: utils.c 
+${OBJECTDIR}/utils.o: utils.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -g -Wall -MMD -MP -MF $@.d -o $@ utils.c
+	${RM} "$@.d"
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/utils.o utils.c
 
 # Subprojects
 .build-subprojects:

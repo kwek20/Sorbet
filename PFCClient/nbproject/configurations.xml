@@ -12,6 +12,7 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>pfc.h</itemPath>
       <itemPath>pfcclient.c</itemPath>
       <itemPath>switch.c</itemPath>
       <itemPath>utils.c</itemPath>
@@ -41,6 +42,8 @@
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>
+      <item path="pfc.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="pfcclient.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="switch.c" ex="false" tool="3" flavor2="0">
@@ -68,6 +71,8 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
+      <item path="pfc.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="pfcclient.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="switch.c" ex="false" tool="3" flavor2="0">

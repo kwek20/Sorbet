@@ -27,8 +27,24 @@
 #include <resolv.h>
 #include <malloc.h>
 #include <openssl/sha.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
+//#include <openssl/ssl.h>
+//#include <openssl/err.h>
+
+//#include "polarssl/entropy.h"
+//#include "polarssl/ctr_drbg.h"
+//#include "polarssl/certs.h"
+//#include "polarssl/x509.h"
+//#include "polarssl/ssl.h"
+//#include "polarssl/net.h"
+//#include "polarssl/error.h"
+//#include "polarssl/ssl_cache.h"
+
+#include "polarssl/net.h"
+#include "polarssl/ssl.h"
+#include "polarssl/entropy.h"
+#include "polarssl/ctr_drbg.h"
+#include "polarssl/error.h"
+#include "polarssl/certs.h"
 
 #define BUFFERSIZE 4096
 #define NETWERKPOORT 2200
@@ -64,25 +80,30 @@ typedef struct clientsinfo{
     char* username;
 } clientsinfo;
 
+typedef struct fdinfo{
+    ssl_context *ssl;
+    int *clientfd;
+} fdinfo;
+
 clientsinfo *clients;
 int IS_CLIENT;
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
-int ConnectNaarServer(int *sockfd);
-int FileTransferSend(SSL *ssl, char* bestandsnaam);
-int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time);
+int ConnectNaarServer(int* sockfd, int ret, int server_fd, ctr_drbg_context ctr_drbg, entropy_context entropy, ssl_context ssl, x509_crt cacert);
+int FileTransferSend(ssl_context *ssl, char* bestandsnaam);
+int FileTransferReceive(ssl_context *ssl, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
-int ModifyCheckServer(SSL *ssl, char* bestandsnaam, char* timeleft);
-int ModifyCheckClient(SSL *ssl, char* bestandsnaam);
+int ModifyCheckServer(ssl_context *ssl, char* bestandsnaam, char* timeleft);
+int ModifyCheckClient(ssl_context *ssl, char* bestandsnaam);
 
 int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 
-int switchResult(SSL *ssl, char* buffer);
-int sendPacket(SSL *ssl, int packet, ...);
-int waitForOk(SSL *ssl);
+int switchResult(ssl_context *ssl, char* buffer);
+int sendPacket(ssl_context *ssl, int packet, ...);
+int waitForOk(ssl_context *ssl);
 
 int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
@@ -97,7 +118,7 @@ int hashPassword(char *password, char *salt, char to[]);
 int randomSalt(char *salt, int aantalBytes);
 int convertHashToString(char *stringHash, unsigned char hash[]);
 
-int ConnectRefused(SSL *ssl);
+int ConnectRefused(ssl_context *ssl);
 
 //DB - Will be edited
 int callback(void *NotUsed, int argc, char **argv, char **azColName);

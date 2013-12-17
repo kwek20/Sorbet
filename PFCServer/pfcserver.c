@@ -13,14 +13,19 @@
 #include <semaphore.h>
 
 #define CERTIFICATE "sorbet.pem"
+#define DEBUG_LEVEL 5
+#define HTTP_RESPONSE \
+    "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
+    "<h2>PolarSSL Test Server</h2>\r\n" \
+    "<p>Successful connection using: %s</p>\r\n"
 
 void setupSIG();
 void SIGexit(int sig);
 
 void quit();
-void stopClient(SSL *ssl);
+void stopClient(fdinfo *fds);
 
-void create(int *sock);
+void create(int *listen_fd);
 struct sockaddr_in getServerAddr(int poort);
 
 void command(void);
@@ -34,6 +39,8 @@ int printClientInfo(struct clientsinfo client, int number);
 
 int ReceiveCredentials(char* username, char* password);
 int LoadCertificates(char* CertFile, char* KeyFile);
+
+int sluitVerbinding(int client_fd, x509_crt srvcert, pk_context pkey);
 
 const static struct {
     const char *name;
@@ -52,15 +59,30 @@ const static struct {
     {"quit", help, 3, "This will gracefully stop the server and it's active connections", (const char * const []){"exit", "stop", "end"}}
 };
 
-int sock, bestandfd, cur_cli = 0;
+int ret, bestandfd, cur_cli = 0;
 sem_t client_wait; 
-SSL_CTX *ctx;
+x509_crt srvcert;
+pk_context pkey;
+entropy_context entropy;
+ctr_drbg_context ctr_drbg;
+int client_fd;
+int listen_fd;
+const char *pers = "ssl_server";
+
+static void my_debug( void *ctx, int level, const char *str )
+{
+    if( level < DEBUG_LEVEL )
+    {
+        fprintf( (FILE *) ctx, "%s", str );
+        fflush(  (FILE *) ctx  );
+    }
+}
+
 /*
  * Main function, starts all threads
  */
 int main(int argc, char** argv) {
     int poort = NETWERKPOORT;
-    const SSL_METHOD *method;
     
     if (argc > 1 && argv[1] != NULL){
         poort = atoi(argv[1]);
@@ -68,20 +90,76 @@ int main(int argc, char** argv) {
 
     setupSIG();
     
-    //SSL_CTX init
-    
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    SSL_load_error_strings();
-    method = TLSv1_server_method();
-    ctx = SSL_CTX_new(method);   /* create new context from method */
-    if ( ctx == NULL ){
-        ERR_print_errors_fp(stderr);
-        return STUK;
+    /*
+     * 1. Load the certificates and private RSA key
+     */
+    printf( "\n  . Loading the server cert. and key..." );
+    fflush( stdout );
+
+    x509_crt_init( &srvcert );
+
+    /*
+     * This demonstration program uses embedded test certificates.
+     * Instead, you may want to use x509_crt_parse_file() to read the
+     * server and CA certificates, as well as pk_parse_keyfile().
+     */
+    ret = x509_crt_parse( &srvcert, (const unsigned char *) test_srv_crt,
+                          strlen( test_srv_crt ) );
+    if( ret != 0 )
+    {
+        printf( " failed\n  !  x509_crt_parse returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
     }
-    if(LoadCertificates(CERTIFICATE,CERTIFICATE) == STUK){
-        printf("load Certifcates went wrong\n");
+
+    ret = x509_crt_parse( &srvcert, (const unsigned char *) test_ca_list,
+                          strlen( test_ca_list ) );
+    if( ret != 0 )
+    {
+        printf( " failed\n  !  x509_crt_parse returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
     }
+
+    pk_init( &pkey );
+    ret =  pk_parse_key( &pkey, (const unsigned char *) test_srv_key,
+                         strlen( test_srv_key ), NULL, 0 );
+    if( ret != 0 )
+    {
+        printf( " failed\n  !  pk_parse_key returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
+    }
+
+    printf( " ok\n" );
+
+    /*
+     * 2. Setup the listening TCP socket
+     */
+    printf( "  . Bind on https://localhost:4433/ ..." );
+    fflush( stdout );
+
+    if( ( ret = net_bind( &listen_fd, NULL, poort ) ) != 0 )
+    {
+        printf( " failed\n  ! net_bind returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
+    }
+
+    printf( " ok\n" );
+
+    /*
+     * 3. Seed the RNG
+     */
+    printf( "  . Seeding the random number generator..." );
+    fflush( stdout );
+
+    entropy_init( &entropy );
+    if( ( ret = ctr_drbg_init( &ctr_drbg, entropy_func, &entropy,
+                               (const unsigned char *) pers,
+                               strlen( pers ) ) ) != 0 )
+    {
+        printf( " failed\n  ! ctr_drbg_init returned %d\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
+    }
+
+    printf( " ok\n" );
     
     //create semaphore
     if(sem_init(&client_wait, 0, 0) < 0){
@@ -92,32 +170,8 @@ int main(int argc, char** argv) {
     sem_post(&client_wait);
     
     //make server data
-    struct sockaddr_in server_addr = getServerAddr(poort);
-    clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
-    
-    //make a socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-        perror("socket");
-        return -1;
-    }
-    
-    int setsock = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &setsock, sizeof(int))){
-        perror("Socket setting");
-        return STUK;
-    }
-
-    //maak bind via socket
-    if (bind(sock, (struct sockaddr *)&server_addr, sizeof(struct sockaddr)) < 0){
-        perror("bind");
-        return -1;
-    }
-
-    //listen maken
-    if (listen(sock, MAX_CLI) < 0){
-        perror("listen");
-        return -1;
-    }
+    //struct sockaddr_in server_addr = getServerAddr(poort);
+    //clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
     
     printStart();
     connectDB();
@@ -136,7 +190,7 @@ int main(int argc, char** argv) {
         if(cur_cli < MAX_CLI){
             //create new thread for a new connection
             pthread_t client;
-            pthread_create(&client, NULL, (void*)create, &sock);
+            pthread_create(&client, NULL, (void*)create, &listen_fd);
             pthread_detach(client);
             cur_cli++;
             
@@ -150,36 +204,135 @@ int main(int argc, char** argv) {
     return (EXIT_SUCCESS);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+int sluitVerbinding(int client_fd, x509_crt srvcert, pk_context pkey)
+{    
+    net_close(client_fd);
+    x509_crt_free(&srvcert);
+    pk_free(&pkey);
+    
+//#if defined(POLARSSL_SSL_CACHE_C)
+//    ssl_cache_free(&cache);
+//#endif
+        
+    return MOOI;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Main function for every new thread
  * This will wait for a new client and act accordingly
- * @param sock the socket the server created
+ * @param listen_fd the socket the server created
  */
-void create(int *sock){
+void create(int *listen_fd){
     //init vars
-    int result = 0, fd, rec, i, temp = 0;
+    fdinfo *fds = malloc(sizeof(fdinfo));
+    int fd, i, temp = 0;
     struct sockaddr_in client_addr;
-    char buffer[BUFFERSIZE];
+    unsigned char buffer[BUFFERSIZE];
     char** to;
-    SSL *ssl;
+    //SSL *ssl;
+    ssl_context ssl;
+    
+#if defined(POLARSSL_SSL_CACHE_C)
+    ssl_cache_context cache;
+#endif
 
     //open sem for new thread
     sem_post(&client_wait);
     
-    //accept connection
-    socklen_t size = sizeof(client_addr);
-    if ((fd = accept(*sock, (struct sockaddr *)&client_addr, &size)) < 0){
-         perror("accept");
-    }
+    //////////////////////////////////////////////////////////
     
-    ssl = SSL_new(ctx);
-    SSL_set_fd(ssl, fd);
-    if(SSL_accept(ssl) == STUK){
-        ERR_print_errors_fp(stderr);
-        return;
+    /*
+     * 4. Setup stuff
+     */
+    printf( "  . Setting up the SSL data...." );
+    fflush( stdout );
+
+    if( ( ret = ssl_init( &ssl ) ) != 0 )
+    {
+        printf( " failed\n  ! ssl_init returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
     }
-        ERR_print_errors_fp(stderr);
-    fd = SSL_get_fd(ssl);
+
+    ssl_set_endpoint( &ssl, SSL_IS_SERVER );
+    ssl_set_authmode( &ssl, SSL_VERIFY_NONE );
+
+    ssl_set_rng( &ssl, ctr_drbg_random, &ctr_drbg );
+    ssl_set_dbg( &ssl, my_debug, stdout );
+
+#if defined(POLARSSL_SSL_CACHE_C)
+    ssl_set_session_cache( &ssl, ssl_cache_get, &cache,
+                                 ssl_cache_set, &cache );
+#endif
+
+    ssl_set_ca_chain( &ssl, srvcert.next, NULL, NULL );
+    ssl_set_own_cert( &ssl, &srvcert, &pkey );
+
+    printf( " ok\n" );
+
+reset:
+#ifdef POLARSSL_ERROR_C
+    if( ret != 0 )
+    {
+        char error_buf[100];
+        polarssl_strerror( ret, error_buf, 100 );
+        printf("Last error was: %d - %s\n\n", ret, error_buf );
+    }
+#endif
+
+    if( client_fd != -1 )
+        net_close( client_fd );
+
+    ssl_session_reset( &ssl );
+
+    /*
+     * 3. Wait until a client connects
+     */
+    client_fd = -1;
+
+    printf( "  . Waiting for a remote connection ..." );
+    fflush( stdout );
+
+    if( ( ret = net_accept( *listen_fd, &client_fd, NULL ) ) != 0 )
+    {
+        printf( " failed\n  ! net_accept returned %d\n\n", ret );
+        sluitVerbinding(client_fd, srvcert, pkey);
+    }
+
+    ssl_set_bio( &ssl, net_recv, &client_fd,
+                       net_send, &client_fd );
+    
+    
+    fds->clientfd = &client_fd;
+    fds->ssl = &ssl;
+
+    printf( " ok\n" );
+    
+    /*
+     * 5. Handshake
+     */
+    printf( "  . Performing the SSL/TLS handshake..." );
+    fflush( stdout );
+
+    while( ( ret = ssl_handshake( &ssl ) ) != 0 )
+    {
+        if( ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE )
+        {
+            printf( " failed\n  ! ssl_handshake returned %d\n\n", ret );
+            goto reset;
+        }
+    }
+
+    printf( " ok\n" );
+    
+    ////////////////////////////////////////////////////
     
     //data for later usage
     char *ip;
@@ -203,11 +356,11 @@ void create(int *sock){
             return;
         }
         printf("voor SSLREAD login\n");
-        SSL_read(ssl, buffer, BUFFERSIZE);
-        ERR_print_errors_fp(stderr);
-        transform(buffer, to);
+        ssl_read(&ssl, buffer, BUFFERSIZE);
+        //err_print_errors_fp(stderr);
+        transform((char*)buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
-            sendPacket(ssl, STATUS_AUTHOK, NULL);
+            sendPacket(&ssl, STATUS_AUTHOK, NULL);
             //add username
             clients[fd-4].username = malloc(strlen(to[1]));
             strcpy(clients[fd-4].username, to[1]);
@@ -221,10 +374,10 @@ void create(int *sock){
         }
         
         if(i < 2){
-            sendPacket(ssl, STATUS_AUTHFAIL, NULL);
+            sendPacket(&ssl, STATUS_AUTHFAIL, NULL);
         } else {
-            sendPacket(ssl, STATUS_CNA, NULL);
-            stopClient(ssl);
+            sendPacket(&ssl, STATUS_CNA, NULL);
+            stopClient(fds);
             return;
         }
     }
@@ -258,7 +411,7 @@ void create(int *sock){
         bzero(buffer, BUFFERSIZE);
     }
     */
-    stopClient(ssl);
+    stopClient(fds);
 }
 
 /**
@@ -280,18 +433,19 @@ void SIGexit(int sig){
 
 void quit(){
     puts("\nStopping server.....");
-    close(sock);
+    close(listen_fd);
     closeDB();
     exit(MOOI);
 }
 
-void stopClient(SSL *ssl){
-    int fd = SSL_get_fd(ssl);
+void stopClient(fdinfo *fds){
+    int *fd = fds->clientfd;
     
     printf("Client stopped\n");
-    memset(&clients[fd-4], 0, sizeof(struct sockaddr_in));
+    memset(&clients[*fd-4], 0, sizeof(struct sockaddr_in));
     sem_post(&client_wait);
-    close(fd);
+    ssl_free(fds->ssl);
+    close(*fd);
     cur_cli--;
 }
 
@@ -477,27 +631,6 @@ int ReceiveCredentials(char* username, char* password){
     
     if(strcmp(saltedPassword, getPassWord(username)) != 0){
         printf("password fail temp: %i\n",temp);
-        return STUK;
-    }
-    return MOOI;
-}
-
-int LoadCertificates(char* CertFile, char* KeyFile){/* set the local certificate from CertFile */
-    if ( SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0 )
-    {
-        ERR_print_errors_fp(stderr);
-        return STUK;
-    }
-    /* set the private key from KeyFile (may be the same as CertFile) */
-    if ( SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0 )
-    {
-        ERR_print_errors_fp(stderr);
-        return STUK;
-    }
-    /* verify private key */
-    if ( !SSL_CTX_check_private_key(ctx) )
-    {
-        fprintf(stderr, "Private key does not match the public certificate\n");
         return STUK;
     }
     return MOOI;

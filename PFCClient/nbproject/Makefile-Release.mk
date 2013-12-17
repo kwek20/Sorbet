@@ -63,13 +63,13 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcclient: ${OBJECTFILES}
 
 ${OBJECTDIR}/pfcclient.c.gch: pfcclient.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o $@ pfcclient.c
+	${RM} "$@.d"
+	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o "$@" pfcclient.c
 
 ${OBJECTDIR}/utils.c.gch: utils.c 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} $@.d
-	$(COMPILE.c) -O2 -MMD -MP -MF $@.d -o $@ utils.c
+	${RM} "$@.d"
+	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o "$@" utils.c
 
 # Subprojects
 .build-subprojects:

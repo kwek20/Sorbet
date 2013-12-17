@@ -13,7 +13,7 @@
 
 #include "pfc.h"
 
-int switchResult(SSL *ssl, char* buffer){
+int switchResult(ssl_context *ssl, char* buffer){
     char** to = malloc(sizeof(buffer)*sizeof(buffer[0]));
     int statusCode = 0, bytes = strlen(buffer), aantal = transform(buffer, to);
     
@@ -43,9 +43,9 @@ int switchResult(SSL *ssl, char* buffer){
     }
 }
 
-int ConnectRefused(SSL *ssl){
+int ConnectRefused(ssl_context *ssl){
     printf("You have been disconnected\n");
-    close(SSL_get_fd(ssl));
+    //close(SSL_get_fd(ssl));
     return STUK;
 }
 

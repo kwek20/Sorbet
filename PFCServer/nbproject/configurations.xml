@@ -43,7 +43,7 @@
       </toolsSet>
       <compileType>
         <cTool>
-          <commandLine>-V -lpthread -lsqlite3</commandLine>
+          <commandLine>-V -lpthread -lsqlite3 -lpolarssl</commandLine>
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>

@@ -49,9 +49,9 @@ int BestaatDeFile(char* bestandsnaam){
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
  * @return 0 if succesvol. -1 if failed.
  */
-int FileTransferSend(SSL *ssl, char* bestandsnaam){
+int FileTransferSend(ssl_context *ssl, char* bestandsnaam){
     char* savedir = malloc(strlen(bestandsnaam));
-    int fd = SSL_get_fd(ssl);
+    int fd = 0;//ssl_get_fd(ssl);
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[fd-4].username)) == NULL) return STUK;
         strcpy(savedir, "userfolders/");
@@ -60,7 +60,7 @@ int FileTransferSend(SSL *ssl, char* bestandsnaam){
     }
     strcat(savedir, bestandsnaam);
     
-    char buffer[BUFFERSIZE];
+    unsigned char buffer[BUFFERSIZE];
     int readCounter = 0;
     
     if (waitForOk(ssl) == MOOI){
@@ -71,14 +71,14 @@ int FileTransferSend(SSL *ssl, char* bestandsnaam){
     }
     
     if((OpenBestand(savedir)) < 0){return -1;}
-    puts(buffer);
+    puts((char*)buffer);
     
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
      * Herhaal tot bestand compleet ingelezen is.
      */
-    while((readCounter = SSL_read(ssl, buffer, BUFFERSIZE)) > 0){
-        if((SSL_write(ssl, buffer, readCounter)) < 0) {
+    while((readCounter = ssl_read(ssl, buffer, BUFFERSIZE)) > 0){
+        if((ssl_write(ssl, buffer, readCounter)) < 0) {
             perror("Send file error");
             return STUK;
         }
@@ -120,8 +120,8 @@ int FileTransferSend(SSL *ssl, char* bestandsnaam){
  * @param time de tijd die het nieuwe bestand moet krijgen als modify datum
  * @return 0 if succesvol. -1 if failed.
  */
-int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
-    int fd = SSL_get_fd(ssl);
+int FileTransferReceive(ssl_context *ssl, char* bestandsnaam, int time){
+    int fd = 0;//SSL_get_fd(ssl);
     char* savedir = malloc(strlen(bestandsnaam));
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[fd-4].username)) == NULL) return STUK;
@@ -131,7 +131,7 @@ int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
     }
     strcat(savedir, bestandsnaam);
     
-    char buffer[BUFFERSIZE];
+    unsigned char buffer[BUFFERSIZE];
     int file = -1, rec = 0;
     
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -144,14 +144,14 @@ int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
     printf("TIJD: %i\n", time);
     
     for ( ;; ){
-        if ((rec = SSL_read(ssl, buffer, BUFFERSIZE)) < 0){
+        if ((rec = ssl_read(ssl, buffer, BUFFERSIZE)) < 0){
             return STUK;
         } else if (rec == 0){
             return MOOI;
         } else {
             if (rec < 50){
                 //want to stop?
-                if(switchResult(ssl, buffer) == STATUS_EOF){
+                if(switchResult(ssl, (char*)buffer) == STATUS_EOF){
                     printf("Stopping file transfer!\n");
                     sendPacket(ssl, STATUS_OK, NULL);
                     break;
@@ -182,8 +182,8 @@ int FileTransferReceive(SSL *ssl, char* bestandsnaam, int time){
  * @param timeleft de modify datum van het bestand van de client
  * @return 0 if succesvol. -1 if failed. 
  */
-int ModifyCheckServer(SSL *ssl, char *bestandsnaam, char* timeleft){
-    int file, time = atoi(timeleft), fd = SSL_get_fd(ssl);
+int ModifyCheckServer(ssl_context *ssl, char *bestandsnaam, char* timeleft){
+    int file, time = atoi(timeleft), fd = 0;//SSL_get_fd(ssl);
     printf("timeleft: %s, time: %i\n", timeleft, time);
     
     char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
@@ -247,10 +247,10 @@ int ModifyCheckServer(SSL *ssl, char *bestandsnaam, char* timeleft){
  * @param ... the values for this packet, end with NULL
  * @return 1 if the packet was send succesfully. otherwise 0
  */
-int sendPacket(SSL *ssl, int packet, ...){
+int sendPacket(ssl_context *ssl, int packet, ...){
     //int fd = SSL_get_fd(ssl);
-    char *info = malloc(105);
-    strcpy(info, "");
+    unsigned char *info = malloc(105);
+    strcpy((char*)info, "");
 
     char *p = malloc(105);
     sprintf(p, "%i", packet);
@@ -261,20 +261,20 @@ int sendPacket(SSL *ssl, int packet, ...){
     va_start(ap, packet);
     for (i = p; i != NULL; i = va_arg(ap, char *)){
         sprintf(p, "%s", i);
-        strcat(info, p);
-        strcat(info, ":");
+        strcat((char*)info, p);
+        strcat((char*)info, ":");
     }
     va_end(ap);
     
-    info[strlen(info)-1] = '\0';
+    //(char*)info[strlen((char*)info)-1] = '\0';
     
     int bytes;
     
-    if((bytes=SSL_write(ssl, info, strlen(info))) < 0){
+    if((bytes=ssl_write(ssl, info, strlen((char*)info))) < 0){
         perror("send");
         return STUK;
     }
-    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, bytes);
+    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, (char*)info, bytes);
     return MOOI;
 }
 
@@ -321,9 +321,9 @@ int modifiedTime(char *bestandsnaam){
  * @param sockfd de socket waarop de functie een ok verwacht
  * @return 0 if succesvol. -1 if failed.
  */
-int waitForOk(SSL *ssl){
+int waitForOk(ssl_context *ssl){
     char *buffer = malloc(BUFFERSIZE);
-    if((SSL_read(ssl, buffer, BUFFERSIZE)) < 0) {
+    if((ssl_read(ssl, (unsigned char*)buffer, BUFFERSIZE)) < 0) {
         perror("Receive OK error");
         return STUK;
     }
