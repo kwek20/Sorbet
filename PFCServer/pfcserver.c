@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
     int poort = NETWERKPOORT;
     if (argc > 1 && argv[1] != NULL){
         poort = atoi(argv[1]);
+        if (poort == 0) poort = NETWERKPOORT;
     }
 
     setupSIG();
@@ -177,11 +178,11 @@ void create(int *sock){
             perror("recv error");
             return;
         }
-        puts("test1");
+
         char** to = malloc(BUFFERSIZE + 100);
-        puts("test2");
+        bzero(to, BUFFERSIZE + 100);
+        
         transform(buffer, to);
-        puts("test3");
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK, NULL);
             //add username
@@ -325,7 +326,7 @@ void command(void){
             help(args, amount);
         } else if (func_ret == STUK) {
             char **newargs = malloc((sizeof(args)+1)*sizeof(args[0]));
-            memcpy(newargs+1, args, sizeof(args));
+            memcpy(newargs+1, args, (sizeof(args)+1)*sizeof(args[0]));
             newargs[0] = "help";
             help(newargs, amount+1);
         }

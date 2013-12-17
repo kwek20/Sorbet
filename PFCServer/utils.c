@@ -51,17 +51,20 @@ int BestaatDeFile(char* bestandsnaam){
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     char* savedir = malloc(strlen(bestandsnaam));
+    bzero(savedir, strlen(bestandsnaam));
+    strcpy(savedir, "");
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
+        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
     }
+
     strcat(savedir, bestandsnaam);
-    
     char buffer[BUFFERSIZE];
     int readCounter = 0;
-    
+
     if (waitForOk(*sockfd) == MOOI){
         printf("Received ok!");
     } else {
@@ -82,14 +85,12 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
             return STUK;
         }
         
-        if (waitForOk(*sockfd) == MOOI){
-            //printf("Received ok!");
-        } else {
+        if (waitForOk(*sockfd) == STUK){
             printf("error?");
             break;
         }
         
-        //bzero(buffer, BUFFERSIZE);
+        bzero(buffer, BUFFERSIZE);
     }
     if(readCounter < 0){
         return STUK;
@@ -108,6 +109,7 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         printf("EOF verstuurd en ok ontvangen. \n");
     }
     
+    free(savedir);
     close(bestandfd);
     return MOOI;
 }
@@ -121,33 +123,45 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char* savedir = malloc(strlen(bestandsnaam));
+    bzero(savedir, strlen(bestandsnaam));
+    strcpy(savedir, "");
+    
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
+        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
+        strcat(savedir, "/");
     }
+
     strcat(savedir, bestandsnaam);
     
     char buffer[BUFFERSIZE];
     int file = -1, rec = 0;
     
+    printf("file path: %s\n", savedir);
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         //file doesnt exist, lets create the folder shant we?
         char **path = malloc(strlen(savedir) + 100);
+        bzero(path, strlen(savedir) + 100);
+        
         int i, amount = transformWith(savedir, path, "/");
         if (amount > 0){
             char *folderpath = malloc(strlen(savedir));
+            bzero(folderpath, strlen(savedir));
+            
             strcpy(folderpath, "");
-            strcat(folderpath, "/");
 
             for(i=0; i<amount-1; i++){
                 if (strcmp(path[i], "..") == 0) continue;
                 
                 strcat(folderpath, path[i]);
                 strcat(folderpath, "/");
+                printf("mkdir: %s\n", folderpath);
                 mkdir(folderpath, S_IRWXU);
             }
+            free(folderpath);
         }
         
         file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -181,8 +195,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     }
     changeModTime(savedir, time);
     
-    
-    
+    free(savedir);
     close(file);
     return MOOI;
 }
@@ -207,10 +220,16 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     printf("timeleft: %s, time: %i\n", timeleft, time);
     
     char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
+    bzero(buffer, (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
+    strcpy(buffer, "");
+    
     char *savedir = malloc(strlen(bestandsnaam));
+    bzero(savedir, strlen(bestandsnaam));
+    strcpy(savedir, "");
     
     if (IS_CLIENT == STUK){
         if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
+        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
         strcpy(savedir, "userfolders/");
         strcat(savedir, clients[*sockfd-4].username);
         strcat(savedir, "/");
@@ -252,19 +271,24 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         }
     }
     close(file);
+    int ret = STUK;
     if (waitForOk(*sockfd) == MOOI){
-        return switchResult(sockfd, buffer);
-    } else {
-        return STUK;
-    }
+        ret = switchResult(sockfd, buffer);
+    } 
+    
+    //free(buffer);
+    //free(savedir);
+    return ret;
     
 }
 
 int sendPacket(int fd, int packet, ...){
-    char *info = malloc(105);
+    char *info = malloc(BUFFERSIZE);
+    bzero(info, BUFFERSIZE);
     strcpy(info, "");
 
-    char *p = malloc(105);
+    char *p = malloc(BUFFERSIZE);
+    bzero(p, BUFFERSIZE);
     sprintf(p, "%i", packet);
     
     va_list ap;
@@ -275,6 +299,7 @@ int sendPacket(int fd, int packet, ...){
         sprintf(p, "%s", i);
         strcat(info, p);
         strcat(info, ":");
+        bzero(p, BUFFERSIZE);
     }
     va_end(ap);
     
@@ -287,6 +312,8 @@ int sendPacket(int fd, int packet, ...){
         return STUK;
     }
     printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+    free(info);
+    free(p);
     return MOOI;
 }
 
@@ -297,6 +324,8 @@ int sendPacket(int fd, int packet, ...){
  */
 char *toString(int number){
     char *nr = malloc(10);
+    bzero(nr, 10);
+    
     sprintf(nr, "%i", number);
     strcat(nr, "\0");
     return nr;
@@ -309,9 +338,13 @@ char *toString(int number){
 void getEOF(char *to){
     strcpy(to, "");
     char *pID = malloc(sizeof(int));
+    bzero(pID, sizeof(int));
+    
     sprintf(pID, "%i", STATUS_EOF);
     strcat(to, pID);
     strcat(to, ":EOF");
+    
+    free(pID);
 }
 
 /**
@@ -334,13 +367,22 @@ int modifiedTime(char *bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int waitForOk(int sockfd){
-    char *buffer = malloc(3);
-    if((recv(sockfd, buffer, 3, 0)) < 0) {
+    char *buffer = malloc(10);
+    bzero(buffer, 10);
+    if((recv(sockfd, buffer, 10, 0)) < 0) {
         perror("Receive OK error");
+        free(buffer);
         return STUK;
     }
     
-    if(switchResult(&sockfd, buffer) != STATUS_OK) return STUK;
+    printf("buffer: %s\n", buffer);
+    if(switchResult(&sockfd, buffer) != STATUS_OK){
+        free(buffer);
+        puts("notgood ;(");
+        return STUK;
+    }
+    
+    free(buffer);
     return MOOI;
 }
 /**
@@ -367,6 +409,7 @@ int changeModTime(char *bestandsnaam, int time){
 int hashPassword(char *password, char *salt, char to[]) {
     SHA256_CTX ctx;
     unsigned char *temp = malloc(SHA256_DIGEST_LENGTH);
+    bzero(temp, SHA256_DIGEST_LENGTH);
     
     // Initialiseer struct
     SHA256_Init(&ctx);
@@ -382,7 +425,7 @@ int hashPassword(char *password, char *salt, char to[]) {
     
     // Maak van Hex een String
     convertHashToString(to, temp);
-    
+    free(temp);
     return MOOI;
 }
 
@@ -441,6 +484,7 @@ void printArray(int length, char *array[]){
  */
 char* getInput(int max){
     char *temp = malloc(max);
+    bzero(temp, max);
     fgets(temp,max,stdin);
     temp[strlen(temp)-1]='\0';
     return temp;

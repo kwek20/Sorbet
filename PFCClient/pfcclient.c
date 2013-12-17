@@ -88,15 +88,16 @@ int loopOverFiles(char **path, int* sockfd){
         switch (p->fts_info) {
             case FTS_D:
                 //directory
-                printf("Searchign in directory: %s\n", p->fts_path);
+                printf("-- Searching in directory: %s\n", p->fts_path);
                 break;
             case FTS_F:
                 //file
+                printf("-- Synchronising file: %s\n", p->fts_path);
                 if(ModifyCheckClient(sockfd, p->fts_path) < 0){
                     printf("error bij ModifyCheckClient\n");
                     goto end;
                 }
-                printf("Synchronising file: %s\n", p->fts_path);
+                printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
                 break;
             default:
                 break;
@@ -166,7 +167,7 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     char statusCode[4], seconden[40];
     char* buffer = malloc(BUFFERSIZE);
     int readCounter = 0;
-    
+    bzero(buffer, BUFFERSIZE);
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
     sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
@@ -177,8 +178,9 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
         perror("Receive modififycheck result error");
         return STUK;
     }
-    
+    puts(buffer);
     sendPacket(*sockfd, STATUS_OK, NULL);
+    
     return switchResult(sockfd, buffer);
 }
 
@@ -224,7 +226,7 @@ int SendCredentials(int* sockfd){
         switch(sR){
             case STUK: return STUK;
             case STATUS_AUTHFAIL: printf("Username or Password incorrect\n"); continue;
-            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); return MOOI;
+            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); free(username); free(password), free(buffer); return MOOI;
         }
     }
     

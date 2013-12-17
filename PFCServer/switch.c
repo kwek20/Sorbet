@@ -14,13 +14,14 @@
 #include "pfc.h"
 
 int switchResult(int* sockfd, char* buffer){
-    char** to = malloc(sizeof(buffer)*sizeof(buffer[0]));
-    int statusCode = 0, bytes = strlen(buffer), aantal = transform(buffer, to);
-    
+    printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+    char** to = malloc(strlen(buffer));
+    int bytes = strlen(buffer);
+    int statusCode = 0, aantal = transform(buffer, to);
     if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
     
     if((statusCode = atoi(to[0])) < 100){
-        printf("error with statusCode\n");
+        printf("error with statusCode (%i)\n", statusCode);
         return STUK;
     }
     printf("Received packet: %i(%i) data: \n", statusCode, bytes);
@@ -67,15 +68,23 @@ int transform(char *text, char** to){
  * @return the amount of splits done (amount of values)
  */
 int transformWith(char *text, char** to, char *delimit){
-    char *temp;
-
+    char *temp = malloc(strlen(text));
+    bzero(temp, strlen(text));
+    
     temp = strtok(text, delimit);
     int numVars = 0;
 
     while (temp != NULL || temp != '\0'){
+        to[numVars] = malloc(strlen(temp));
+        bzero(to[numVars], strlen(temp));
+        
         to[numVars] = temp;
+        
+        //bzero(temp, strlen(text));
         temp = strtok(NULL, delimit);
         numVars++;
     }
+    
+    free(temp);
     return numVars;
 }
