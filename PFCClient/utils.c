@@ -50,21 +50,12 @@ int BestaatDeFile(char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
-    char* savedir = malloc(strlen(bestandsnaam));
-    bzero(savedir, strlen(bestandsnaam));
-    strcpy(savedir, "");
-    if (IS_CLIENT == STUK){
-        if (realloc(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
-        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
-        strcpy(savedir, "userfolders/");
-        strcat(savedir, clients[*sockfd-4].username);
-        strcat(savedir, "/");
-    }
-
-    strcat(savedir, bestandsnaam);
-    char buffer[BUFFERSIZE];
+    char* savedir = fixServerBestand(sockfd, bestandsnaam);
+    
+    char *buffer = malloc(BUFFERSIZE);
+    bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
-
+    puts("2");
     if (waitForOk(*sockfd) == MOOI){
         printf("Received ok!");
     } else {
@@ -72,7 +63,11 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         return STUK;
     }
     
-    if((OpenBestand(savedir)) < 0){return -1;}
+    if((OpenBestand(savedir)) < 0){
+        puts("file open faal");
+        puts(savedir);
+        return -1;
+    }
     puts(buffer);
     
     /*
@@ -109,7 +104,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         printf("EOF verstuurd en ok ontvangen. \n");
     }
     
-    free(savedir);
+    if(buffer){
+        free(buffer);
+        buffer = NULL;
+    }
+    
+    if(savedir){
+        //free(savedir);
+        savedir = NULL;
+    }
     close(bestandfd);
     return MOOI;
 }
@@ -122,30 +125,20 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @return 0 if succesvol. -1 if failed.
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
-    char* savedir = malloc(strlen(bestandsnaam));
-    bzero(savedir, strlen(bestandsnaam));
-    strcpy(savedir, "");
+    char* savedir = fixServerBestand(sockfd, bestandsnaam);
     
-    if (IS_CLIENT == STUK){
-        if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
-        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
-        strcpy(savedir, "userfolders/");
-        strcat(savedir, clients[*sockfd-4].username);
-        strcat(savedir, "/");
-    }
-
-    strcat(savedir, bestandsnaam);
-    
-    char buffer[BUFFERSIZE];
+    char *buffer = malloc(BUFFERSIZE);
+    bzero(buffer, BUFFERSIZE);
     int file = -1, rec = 0;
-    
+    puts("2");
     printf("file path: %s\n", savedir);
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
+        puts("3");
         //file doesnt exist, lets create the folder shant we?
         char **path = malloc(strlen(savedir) + 100);
         bzero(path, strlen(savedir) + 100);
-        
+        puts("4");
         int i, amount = transformWith(savedir, path, "/");
         if (amount > 0){
             char *folderpath = malloc(strlen(savedir));
@@ -161,21 +154,28 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
                 printf("mkdir: %s\n", folderpath);
                 mkdir(folderpath, S_IRWXU);
             }
+            
             free(folderpath);
+            if (path){
+                free(*path);
+                *path = NULL;
+            }
         }
-        
+        puts("5");
         file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (file < 0) return STUK;
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
-    
+    puts("6");
     for ( ;; ){
         if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
             return STUK;
+            
         } else if (rec == 0){
             return MOOI;
         } else {
             if (rec < 50){
+                puts("6");
                 //want to stop?
                 if(switchResult(sockfd, buffer) == STATUS_EOF){
                     printf("Stopping file transfer!\n");
@@ -188,14 +188,16 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
             write(file, buffer, rec);
-
+            puts("7");
             //clear received data
             bzero(buffer, BUFFERSIZE);
         }
     }
     changeModTime(savedir, time);
-    
+    puts("8");
     free(savedir);
+    free(buffer);
+    puts("9");
     close(file);
     return MOOI;
 }
@@ -223,19 +225,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     bzero(buffer, (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
     strcpy(buffer, "");
     
-    char *savedir = malloc(strlen(bestandsnaam));
-    bzero(savedir, strlen(bestandsnaam));
-    strcpy(savedir, "");
-    
-    if (IS_CLIENT == STUK){
-        if (realloc(savedir, strlen("/userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)) == NULL) return STUK;
-        bzero(savedir, strlen("userfolders/") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
-        strcpy(savedir, "userfolders/");
-        strcat(savedir, clients[*sockfd-4].username);
-        strcat(savedir, "/");
-    }
-    
-    strcat(savedir, bestandsnaam);
+    char *savedir = fixServerBestand(sockfd, bestandsnaam);
     
     if ((file = open(savedir, O_RDONLY, 0666)) < 0){
         sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
@@ -276,10 +266,75 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         ret = switchResult(sockfd, buffer);
     } 
     
-    //free(buffer);
-    //free(savedir);
+    if(buffer){
+        //free(buffer);
+        buffer = NULL;
+    }
+    if(savedir){
+        //free(savedir);
+        savedir = NULL;
+    }
     return ret;
     
+}
+
+int CreateFolder(int* sockfd, char* bestandsnaam){
+    char* savedir = fixServerBestand(sockfd, bestandsnaam);
+    printf("savedir: %s\n", savedir);
+    
+    char **path = malloc(strlen(savedir) + 100);
+    bzero(path, strlen(savedir) + 100);
+    int i, amount = transformWith(savedir, path, "/");
+    if (amount > 0){
+        char folderpath[BUFFERSIZE];
+        bzero(folderpath, BUFFERSIZE);
+            
+        strcpy(folderpath, "");
+
+        for(i=0; i<amount; i++){
+            if (strcmp(path[i], "..") == 0) continue;
+                
+            strcat(folderpath, path[i]);
+            strcat(folderpath, "/");
+            printf("mkdir: %s\n", folderpath);
+            mkdir(folderpath, S_IRWXU);
+        }
+        //free(folderpath);
+    }
+    
+    if (path){
+        free(*path);
+        *path = NULL;
+    }
+    
+    puts("voor send");
+    sendPacket(*sockfd, STATUS_OK, NULL);
+    puts("voor free");
+    free(savedir);
+    puts("na free");
+    return MOOI;
+}
+
+/**
+ * Checked of dit op de server uitgevoerd word, en stopt er de client folder voor.
+ * @param sockfd
+ * @param bestandsnaam
+ * @return 
+ */
+char* fixServerBestand(int* sockfd, char* bestandsnaam){
+    if (IS_CLIENT == MOOI) return bestandsnaam;
+    
+    char* savedir = malloc(strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
+    bzero(savedir, (strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)));
+    strcpy(savedir, "");
+    
+    strcpy(savedir, "userfolders/");
+    strcat(savedir, clients[*sockfd-4].username);
+    strcat(savedir, "/");
+    
+    strcat(savedir, bestandsnaam);
+    
+    return savedir;
 }
 
 int sendPacket(int fd, int packet, ...){

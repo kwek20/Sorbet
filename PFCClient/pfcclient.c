@@ -85,26 +85,28 @@ int loopOverFiles(char **path, int* sockfd){
 
     while ((p = fts_read(ftsp)) != NULL) {
         //puts(p->fts_path);
+        if (p->fts_path[strlen(p->fts_path)-1] == '~'){ printf("Skipped %s because its a temp file!\n", p->fts_path); continue; }
+                
         switch (p->fts_info) {
             case FTS_D:
                 //directory
                 printf("-- Searching in directory: %s\n", p->fts_path);
+                //sendPacket(*sockfd, STATUS_MKDIR, p->fts_path, NULL);
+                //waitForOk(*sockfd);
                 break;
             case FTS_F:
                 //file
                 printf("-- Synchronising file: %s\n", p->fts_path);
                 if(ModifyCheckClient(sockfd, p->fts_path) < 0){
-                    printf("error bij ModifyCheckClient\n");
-                    goto end;
+                    printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
+                    continue;
                 }
-                printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
                 break;
             default:
                 break;
         }
     }
     
-    end:
     fts_close(ftsp);
     return 0;
 }
@@ -181,7 +183,10 @@ int ModifyCheckClient(int* sockfd, char* bestandsnaam){
     puts(buffer);
     sendPacket(*sockfd, STATUS_OK, NULL);
     
-    return switchResult(sockfd, buffer);
+    readCounter = switchResult(sockfd, buffer);
+    free(buffer);
+            
+    return readCounter;
 }
 
 /**
@@ -223,10 +228,12 @@ int SendCredentials(int* sockfd){
         }
 
         sR = switchResult(sockfd, buffer);
+        
+        free(username); free(password), free(buffer);
         switch(sR){
             case STUK: return STUK;
             case STATUS_AUTHFAIL: printf("Username or Password incorrect\n"); continue;
-            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); free(username); free(password), free(buffer); return MOOI;
+            case STATUS_AUTHOK: printf("Succesvol ingelogd\n"); return MOOI;
         }
     }
     

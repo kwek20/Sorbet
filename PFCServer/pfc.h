@@ -47,6 +47,8 @@
 #define STATUS_CR  300 // Client vraagt bestandsoverdracht aan.
 #define STATUS_MODCHK 301 // Client vraagt aan de server of er nieuwe/gewijzigde bestanden zijn.
 #define STATUS_AUTH 302 //Client stuurt credentials naar server.
+#define STATUS_MKDIR 303 //aanvraag voor een create directory
+
 // 4xx Server naar client requests
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
 #define STATUS_NEW 402 //Server geeft aan dat file op server nieuwer is.
@@ -68,6 +70,7 @@ int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
 
 //Communication Client Server
+int CreateFolder(int* sockfd, char* bestandsnaam);
 int FileTransferSend(int* sockfd, char* bestandsnaam);
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
 int waitForOk(int sockfd);
@@ -86,6 +89,7 @@ char* invoerCommands(char* tekstVoor, int aantalChars);
 //Switch functions
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
+char* fixServerBestand(int* sockfd, char* bestandsnaam);
 
 //Visual presentation
 void printStart(void);
