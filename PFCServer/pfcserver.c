@@ -197,8 +197,14 @@ void create(int *sock){
             break;
         }
         
+        if (to){
+            free(*to);
+            to = NULL;
+        }
+        
         if(i < 2){
             sendPacket(fd, STATUS_AUTHFAIL, NULL);
+            
         } else {
             sendPacket(fd, STATUS_CNA, NULL);
             stopClient(fd);
@@ -333,6 +339,13 @@ void command(void){
         
         memset(command, 0, 50);
         memset(args, 0, 51);
+        
+        
+    }
+    
+    if (args){
+        free(*args);
+        args = NULL;
     }
     
     quit();
@@ -397,6 +410,8 @@ int help(char **args, int amount){
         }
         options[strlen(options)-2] = '\0';
         printf("Available commands: %s\n", options);
+        
+        free(options);
     }
     return ret;
 }
@@ -426,6 +441,7 @@ int printTable(char **args, int amount){
     }
     printRes(res);
     sqlite3_finalize(res);
+    free(sql);
     return MOOI;
 }
 
