@@ -15,7 +15,7 @@
 #define SERVER_NAME "localhost"
 #define GET_REQUEST "GET / HTTP/1.0\r\n\r\n"
 
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 2
 
 static void my_debug( void *ctx, int level, const char *str )
 {
@@ -30,14 +30,14 @@ struct sockaddr_in serv_addr;
 
 int sluitVerbinding(int server_fd, x509_crt cacert, entropy_context entropy, ssl_context ssl);
 int SendCredentials(ssl_context *ssl);
-void InitCTX(int server_fd, ssl_context ssl, x509_crt cacert, int ret, const char *pers, entropy_context entropy, ctr_drbg_context ctr_drbg);
+int InitCTX(int server_fd, ssl_context ssl, x509_crt cacert, int ret, const char *pers, entropy_context entropy, ctr_drbg_context ctr_drbg);
 
 int main(int argc, char** argv) {
 
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
-//    argc = 3;
-    //argv[1] = "test.txt";
-//    argv[2] = "127.0.0.1"; //moet nog veranderd worden
+    argc = 3;
+    argv[1] = "test.txt";
+    argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
 //    IS_CLIENT = MOOI;
     pfcClient(argv);
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
  * @return 0 if succesvol. -1 if failed.
  */
 int pfcClient(char** argv){
-   int sockfd;
+   
    
    ////////////////////////////////////////////////
    ////////////////////////////////////////////////
@@ -71,23 +71,24 @@ int pfcClient(char** argv){
     ////////////////////////////////////////
     ////////////////////////////////////////
    
-   //if((ServerGegevens(argv[2])) < 0){
-   //    exit(EXIT_FAILURE);
-   //}
+   if((ServerGegevens(argv[2])) < 0){
+       exit(EXIT_FAILURE);
+   }
    
+    
+    printStart();
    //SSL_library_init();
-   InitCTX(server_fd, ssl, cacert, ret, pers, entropy, ctr_drbg);
-   
+   if(InitCTX(server_fd, ssl, cacert, ret, pers, entropy, ctr_drbg) != MOOI){exit(EXIT_FAILURE);}
    // Create socket
  //  if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
  //      perror("Create socket error:");
  //      exit(EXIT_FAILURE);
  //  }
    
- //  printStart();
+   
    //clients = (struct clientsinfo*) malloc(sizeof(struct clientsinfo));
-
-   if(ConnectNaarServer(&sockfd, ret, server_fd, ctr_drbg, entropy, ssl, cacert) != MOOI){exit(EXIT_FAILURE);}
+ // if(SendCredentials(&ssl) != MOOI){exit(EXIT_FAILURE);}
+  // if(ConnectNaarServer(&sockfd, ret, server_fd, ctr_drbg, entropy, ssl, cacert) != MOOI){exit(EXIT_FAILURE);}
    
 //   ssl = SSL_new(ctx);      /* create new SSL connection state */
 //   SSL_set_fd(ssl, sockfd);    /* attach the socket descriptor */
@@ -96,7 +97,7 @@ int pfcClient(char** argv){
 //       return STUK;
 //   }
    
-  // if(SendCredentials(&ssl) != MOOI){exit(EXIT_FAILURE);}
+   if(SendCredentials(&ssl) != MOOI){exit(EXIT_FAILURE);}
 //   if(ModifyCheckClient(&sockfd, argv[1]) < 0){
 //       printf("error bij ModifyCheckClient\n");
 //       exit(EXIT_FAILURE);
@@ -104,7 +105,7 @@ int pfcClient(char** argv){
    exit(EXIT_FAILURE);
 }
 
-void InitCTX(int server_fd, ssl_context ssl, x509_crt cacert, int ret, const char *pers, entropy_context entropy, ctr_drbg_context ctr_drbg)
+int InitCTX(int server_fd, ssl_context ssl, x509_crt cacert, int ret, const char *pers, entropy_context entropy, ctr_drbg_context ctr_drbg)
 {
     /*
      * 0. Initialize the RNG and the session data
@@ -154,6 +155,10 @@ void InitCTX(int server_fd, ssl_context ssl, x509_crt cacert, int ret, const cha
 //    method = TLSv1_client_method();  /* Create new client-method instance */
 //    ctx = SSL_CTX_new(method);   /* Create new context */
 //    if ( ctx == NULL ){ERR_print_errors_fp(stderr);}
+
+    if(ConnectNaarServer(ret, server_fd, ctr_drbg, entropy, ssl, cacert) != MOOI){exit(EXIT_FAILURE);}
+   
+    return MOOI;
 }
 
 /**
@@ -191,8 +196,8 @@ int ServerGegevens(char* ip){
  * @param sockfd file descriptor voor de server
  * @return 0 if succesvol. -1 if failed.
  */
-int ConnectNaarServer(int* sockfd, int ret, int server_fd, ctr_drbg_context ctr_drbg, entropy_context entropy, ssl_context ssl, x509_crt cacert){
-    
+int ConnectNaarServer(int ret, int server_fd, ctr_drbg_context ctr_drbg, entropy_context entropy, ssl_context ssl, x509_crt cacert){
+    int* sockfd = 0;
     int len = 0;
     unsigned char buf[BUFFERSIZE];
     
@@ -330,10 +335,16 @@ int ConnectNaarServer(int* sockfd, int ret, int server_fd, ctr_drbg_context ctr_
         }
 
         len = ret;
+        
+        
+        
         printf( " %d bytes read\n\n%s", len, (char *) buf );
+         
     }
+    
     while( 1 );
-
+    printf("test 123456789");
+    //if(SendCredentials(&ssl) != MOOI){exit(EXIT_FAILURE);}  //Sendcredentials
     ssl_close_notify( &ssl );
     
     ////////////////////////////////////
@@ -341,11 +352,11 @@ int ConnectNaarServer(int* sockfd, int ret, int server_fd, ctr_drbg_context ctr_
     
     if((connect(*sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0){
         perror("Connect error:");
-        return -1;
+        return STUK;
     }
 
     printf("Connectie succesvol\n");
-    return 0;
+    return MOOI;
 }
 
 /**
@@ -386,6 +397,7 @@ int ModifyCheckClient(ssl_context *ssl, char* bestandsnaam){
  */
 int SendCredentials(ssl_context *ssl){
     
+    printf("Hello");
      /*
      * client verstuurd verzoek om in te loggen (302:username:password)
      * server verstuurd 404 als dit mag of 203 als dit niet mag
@@ -398,7 +410,7 @@ int SendCredentials(ssl_context *ssl){
     
     for(;;){
         
-        printf("Username: ");
+        printf("\nUsername: ");
         buffer = getInput(50);
         username = malloc(strlen(buffer));
         strcpy(username,buffer);

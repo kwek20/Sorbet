@@ -13,7 +13,7 @@
 #include <semaphore.h>
 
 #define CERTIFICATE "sorbet.pem"
-#define DEBUG_LEVEL 5
+#define DEBUG_LEVEL 2
 #define HTTP_RESPONSE \
     "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n" \
     "<h2>PolarSSL Test Server</h2>\r\n" \
@@ -178,8 +178,8 @@ int main(int argc, char** argv) {
     
     IS_CLIENT = STUK;
     mkdir("userfolders", S_IRWXU);
-    pthread_t cmd;
-    pthread_create(&cmd, NULL, (void*)command, NULL);
+    //pthread_t cmd;
+    //pthread_create(&cmd, NULL, (void*)command, NULL);
     
     printf("Private file cloud server ready!\nWe're listening for clients on port \"%i\".\n", NETWERKPOORT);
     for ( ;; ){
@@ -305,13 +305,18 @@ reset:
         printf( " failed\n  ! net_accept returned %d\n\n", ret );
         sluitVerbinding(client_fd, srvcert, pkey);
     }
-
+    
     ssl_set_bio( &ssl, net_recv, &client_fd,
                        net_send, &client_fd );
     
-    
+    puts("KIJKHIERHIERHIER!!!!!!!!!!!!");
+    puts(toString(client_fd));
+    puts(toString(*listen_fd));
     fds->clientfd = &client_fd;
     fds->ssl = &ssl;
+    
+    
+    
 
     printf( " ok\n" );
     
@@ -332,16 +337,120 @@ reset:
 
     printf( " ok\n" );
     
+    ////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+    
+    int len = 0;
+    
+    
+    
+    
+    /*
+     * 6. Read the HTTP Request
+     */
+    printf( "  < Read from client:" );
+    fflush( stdout );
+
+    for(;;)
+    {
+        len = sizeof( buffer ) - 1;
+        memset( buffer, 0, sizeof( buffer ) );
+        ret = ssl_read( &ssl, buffer, len );
+
+        if( ret == POLARSSL_ERR_NET_WANT_READ || ret == POLARSSL_ERR_NET_WANT_WRITE )
+            continue;
+
+        if( ret <= 0 )
+        {
+            switch( ret )
+            {
+                case POLARSSL_ERR_SSL_PEER_CLOSE_NOTIFY:
+                    printf( " connection was closed gracefully\n" );
+                    break;
+
+                case POLARSSL_ERR_NET_CONN_RESET:
+                    printf( " connection was reset by peer\n" );
+                    break;
+
+                default:
+                    printf( " ssl_read returned -0x%x\n", -ret );
+                    break;
+            }
+
+            break;
+        }
+
+        len = ret;
+        printf( " %d bytes read\n\n%s", len, (char *) buffer );
+
+        if( ret > 0 )
+            break;
+    }
+
+    /*
+     * 7. Write the 200 Response
+     */
+    printf( "  > Write to client:" );
+    fflush( stdout );
+
+    len = sprintf( (char *) buffer, HTTP_RESPONSE,
+                   ssl_get_ciphersuite( &ssl ) );
+puts("1");
+    while( ( ret = ssl_write( &ssl, buffer, len ) ) <= 0 )
+    {
+        if( ret == POLARSSL_ERR_NET_CONN_RESET )
+        {
+            printf( " failed\n  ! peer closed the connection\n\n" );
+            return;//goto reset;
+        }
+
+        if( ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE )
+        {
+            printf( " failed\n  ! ssl_write returned %d\n\n", ret );
+            sluitVerbinding(client_fd, srvcert, pkey);
+        }
+    }
+puts("2");
+
+    len = ret;
+    puts("3");
+    printf( " %d bytes written\n\n%s\n", len, (char *) buffer );
+    
+    
+    
+    ret = 0;
+    puts("4");
+    
+    
+    
+    
+    puts("VLIEGTUIGGGGGIJAIJIEFJSIJFSIJ");
+    puts(toString(client_fd));
+    
+    
+    return; //goto reset;
+    
+    
+    
+    ///////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////
+    
+    
+    
+    
     ////////////////////////////////////////////////////
     
-    //data for later usage
+
     char *ip;
     ip = inet_ntoa(client_addr.sin_addr);
     int poort = htons(client_addr.sin_port);
-
-    //add to the list
-    clients[fd-4].client = client_addr;
-    
+    puts("4.5");
+    //add to the list 
+    puts(toString(client_fd));
+    clients[client_fd-4].client = client_addr;
+    puts("5");
     //print information
     printf("\n-------------\nConnection accepted with client: %i\n", fd);
     printf("IP Address: %s\n", ip);
@@ -355,6 +464,7 @@ reset:
             perror("recv error");
             return;
         }
+        puts("6");
         printf("voor SSLREAD login\n");
         ssl_read(&ssl, buffer, BUFFERSIZE);
         //err_print_errors_fp(stderr);
@@ -362,8 +472,8 @@ reset:
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(&ssl, STATUS_AUTHOK, NULL);
             //add username
-            clients[fd-4].username = malloc(strlen(to[1]));
-            strcpy(clients[fd-4].username, to[1]);
+            clients[client_fd-4].username = malloc(strlen(to[1]));
+            strcpy(clients[client_fd-4].username, to[1]);
             
             char *folder = malloc(strlen(to[1]) + strlen("userfolders/"));
             strcpy(folder, "userfolders/");
@@ -372,12 +482,13 @@ reset:
             mkdir(folder, S_IRWXU);
             break;
         }
-        
+        puts("6");
         if(i < 2){
             sendPacket(&ssl, STATUS_AUTHFAIL, NULL);
         } else {
             sendPacket(&ssl, STATUS_CNA, NULL);
             stopClient(fds);
+            puts("7");
             return;
         }
     }
@@ -411,6 +522,8 @@ reset:
         bzero(buffer, BUFFERSIZE);
     }
     */
+    
+    
     stopClient(fds);
 }
 

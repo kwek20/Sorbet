@@ -91,7 +91,7 @@ int IS_CLIENT;
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int BestaatDeFile(char* fileName);
-int ConnectNaarServer(int* sockfd, int ret, int server_fd, ctr_drbg_context ctr_drbg, entropy_context entropy, ssl_context ssl, x509_crt cacert);
+int ConnectNaarServer(int ret, int server_fd, ctr_drbg_context ctr_drbg, entropy_context entropy, ssl_context ssl, x509_crt cacert);
 int FileTransferSend(ssl_context *ssl, char* bestandsnaam);
 int FileTransferReceive(ssl_context *ssl, char* bestandsnaam, int time);
 int OpenBestand(char* bestandsnaam);
