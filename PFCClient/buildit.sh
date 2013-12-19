@@ -1,1 +1,1 @@
-gcc pfcclient.c switch.c utils.c -l crypto -o client -Wall
+gcc pfcclient.c switch.c utils.c -lcrypto -lssl -o client -Wall

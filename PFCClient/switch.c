@@ -13,7 +13,7 @@
 
 #include "pfc.h"
 
-int switchResult(int* sockfd, char* buffer){
+int switchResult(SSL* ssl, char* buffer){
     printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
     char** to = malloc(strlen(buffer));
     int bytes = strlen(buffer), ret = 0;
@@ -35,12 +35,12 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_AUTHOK:   ret = STATUS_AUTHOK; break;
         case STATUS_AUTHFAIL: ret = STATUS_AUTHFAIL; break;
         
-        case STATUS_MKDIR:    ret = CreateFolder(sockfd, to[1]); break;
-        case STATUS_CR:       ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_MODCHK:   ret = ModifyCheckServer(sockfd, to[1], to[2]); break; //server
-        case STATUS_OLD:      ret = FileTransferSend(sockfd, to[1]); break;
-        case STATUS_NEW:      ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_CNA:      ret = ConnectRefused(sockfd); break;
+        case STATUS_MKDIR:    ret = CreateFolder(ssl, to[1]); break;
+        case STATUS_CR:       ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_MODCHK:   ret = ModifyCheckServer(ssl, to[1], to[2]); break; //server
+        case STATUS_OLD:      ret = FileTransferSend(ssl, to[1]); break;
+        case STATUS_NEW:      ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_CNA:      ret = ConnectRefused(ssl); break;
         default:              ret = STUK;
     }
     
@@ -55,9 +55,10 @@ int switchResult(int* sockfd, char* buffer){
     return ret;
 }
 
-int ConnectRefused(int* sockfd){
+int ConnectRefused(SSL* ssl){
     printf("You have been disconnected\n");
-    close(*sockfd);
+    
+    close(SSL_get_fd(ssl));
     return STUK;
 }
 
