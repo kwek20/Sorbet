@@ -130,15 +130,12 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int file = -1, rec = 0;
-    puts("2");
-    printf("file path: %s\n", savedir);
+    
     file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
-        puts("3");
         //file doesnt exist, lets create the folder shant we?
         char **path = malloc(strlen(savedir) + 100);
         bzero(path, strlen(savedir) + 100);
-        puts("4");
         int i, amount = transformWith(savedir, path, "/");
         if (amount > 0){
             char *folderpath = malloc(strlen(savedir));
@@ -161,12 +158,10 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
                 *path = NULL;
             }
         }
-        puts("5");
         file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (file < 0) return STUK;
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
-    puts("6");
     for ( ;; ){
         if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
             return STUK;
@@ -175,7 +170,6 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             return MOOI;
         } else {
             if (rec < 50){
-                puts("6");
                 //want to stop?
                 if(switchResult(sockfd, buffer) == STATUS_EOF){
                     printf("Stopping file transfer!\n");
@@ -194,10 +188,10 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
         }
     }
     changeModTime(savedir, time);
-    puts("8");
-    free(savedir);
-    free(buffer);
-    puts("9");
+    
+    //free(savedir);
+    //free(buffer);
+    
     close(file);
     return MOOI;
 }
@@ -278,6 +272,120 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     
 }
 
+/**
+ * Functie verstuurt de modify-date van een bestand naar de server en
+ * krijgt terug welke de nieuwste is.
+ * @param sockfd socket waarop gecontroleerd moet worden
+ * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
+ * @return 0 if succesvol. -1 if failed.
+ */
+int ModifyCheckFile(int* sockfd, char* bestandsnaam){
+    char *path = malloc(strlen(bestandsnaam));
+    struct stat bestandEigenschappen;
+    bzero(path, strlen(bestandsnaam));
+    char* buffer = malloc(BUFFERSIZE);
+    char statusCode[4], seconden[40];
+    int readCounter = 0;
+    
+    if (IS_CLIENT == STUK){
+        puts("server!!!");
+        int len = strlen(clients[*sockfd-4].username) + strlen("/userfolders/");
+        //path = malloc(strlen(bestandsnaam) - len);
+        //bzero(path, strlen(bestandsnaam) - len);
+        path = bestandsnaam + len;
+    } else {
+        //path = malloc(strlen(bestandsnaam));
+        //(path, strlen(bestandsnaam));
+        strcpy(path, bestandsnaam);
+    }
+
+    stat(bestandsnaam, &bestandEigenschappen);
+    
+    bzero(buffer, BUFFERSIZE);
+    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
+    sprintf(statusCode, "%d", STATUS_MODCHK);
+ 
+    sendPacket(*sockfd, STATUS_MODCHK, path, seconden, NULL);
+    puts("na sendpacket modchk");
+    
+    // Wacht op antwoord modifycheck van server
+    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+        //printf("%s(%i)\n", buffer, readCounter);
+        perror("Receive modififycheck result error");
+        return STUK;
+    }
+    puts(buffer);
+    sendPacket(*sockfd, STATUS_OK, NULL);
+    
+    readCounter = switchResult(sockfd, buffer);
+    
+    puts("voor free");
+    free(buffer);
+    puts("na free 2");        
+    
+    return MOOI;
+}
+
+
+int loopOverFiles(int* sockfd, char *path){
+    char* savedir = fixServerBestand(sockfd, path);
+    FTS *ftsp;
+    FTSENT *p, *chp;
+    
+    char **dir = malloc(strlen(savedir));
+    bzero(dir, strlen(savedir));
+    dir[0] = savedir;
+    
+    int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
+    
+    if ((ftsp = fts_open((char * const *) dir, fts_options, 0)) == NULL) {
+         perror("fts_open");
+         return STUK;
+    }
+    
+    /* Initialize ftsp with as many argv[] parts as possible. */
+    chp = fts_children(ftsp, 0);
+    if (chp == NULL) {
+           return STUK;               /* no files to traverse */
+    }
+
+    while ((p = fts_read(ftsp)) != NULL) {
+        //puts(p->fts_path);
+        if (p->fts_path[strlen(p->fts_path)-1] == '~'){ printf("Skipped %s because its a temp file!\n", p->fts_path); continue; }
+                
+        switch (p->fts_info) {
+            case FTS_D:
+                //directory
+                printf("-- Searching in directory: %s\n", p->fts_path);
+                //sendPacket(*sockfd, STATUS_MKDIR, p->fts_path, NULL);
+                //waitForOk(*sockfd);
+                break;
+            case FTS_F:
+                //file
+                printf("-- Synchronising file: %s\n", p->fts_path);
+                if(ModifyCheckFile(sockfd, p->fts_path) < 0){
+                    printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
+                    continue;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    
+    puts("voor laatste deel");
+                
+    if(dir){
+        free(*dir);
+        dir = NULL;
+    }
+    
+    puts("voor fts close");
+    fts_close(ftsp);
+    puts("na fts close");
+    return MOOI;
+}
+
 int CreateFolder(int* sockfd, char* bestandsnaam){
     char* savedir = fixServerBestand(sockfd, bestandsnaam);
     printf("savedir: %s\n", savedir);
@@ -341,25 +449,37 @@ int sendPacket(int fd, int packet, ...){
     char *info = malloc(BUFFERSIZE);
     bzero(info, BUFFERSIZE);
     strcpy(info, "");
-
     char *p = malloc(BUFFERSIZE);
     bzero(p, BUFFERSIZE);
-    sprintf(p, "%i", packet);
+    
+    sprintf(p, "%i", packet);   
     
     va_list ap;
-    char *i;
+    char* i;
     
     va_start(ap, packet);
+    
     for (i = p; i != NULL; i = va_arg(ap, char *)){
+        //printf("[%s] | [%c]-[%u] | [%c]-[%u] | %i\n",p,p[strlen(p)-2],(unsigned char)p[strlen(p)-2],p[strlen(p)-2],(unsigned char)p[strlen(p)-1],strlen(p));
+        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+            i[strlen(i)-1] = '\0';
+        }    
+        if(((unsigned char)i[strlen(i)-2]) == 9 || ((unsigned char)i[strlen(i)-2]) == 16){
+            i[strlen(i)-2] = '\0';
+        }   
+        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+            i[strlen(i)-1] = '\0';
+        }
         sprintf(p, "%s", i);
         strcat(info, p);
         strcat(info, ":");
         bzero(p, BUFFERSIZE);
+
     }
     va_end(ap);
     
     info[strlen(info)-1] = '\0';
-    
+     
     int bytes;
     
     if((bytes=send(fd, info, strlen(info),0)) < 0){
@@ -369,6 +489,7 @@ int sendPacket(int fd, int packet, ...){
     printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
     free(info);
     free(p);
+    
     return MOOI;
 }
 

@@ -19,7 +19,7 @@ int ServerGegevens(char* ip);
 int ConnectNaarServer(int* sockfd);
 int SendCredentials(int* sockfd);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
-int loopOverFiles(char **path, int* sockfd);
+int loopOverFilesS(char **path, int* sockfd);
 
 int main(int argc, char** argv) {
     
@@ -64,27 +64,29 @@ int pfcClient(char** argv){
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    
-   exit(loopOverFiles(argv + 1, &sockfd));
+   exit(loopOverFilesS(argv + 1, &sockfd));
 }
 
-int loopOverFiles(char **path, int* sockfd){
+int loopOverFilesS(char **path, int* sockfd){
     FTS *ftsp;
     FTSENT *p, *chp;
     int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
     
     if ((ftsp = fts_open((char * const *) path, fts_options, 0)) == NULL) {
          perror("fts_open");
-         return -1;
+         return STUK;
     }
     
     /* Initialize ftsp with as many argv[] parts as possible. */
     chp = fts_children(ftsp, 0);
     if (chp == NULL) {
-           return 0;               /* no files to traverse */
+           return STUK;               /* no files to traverse */
     }
 
-    while ((p = fts_read(ftsp)) != NULL) {
+    while ((p = fts_read(ftsp))) {
         //puts(p->fts_path);
+        puts("begin nieuwe file");
+        
         if (p->fts_path[strlen(p->fts_path)-1] == '~'){ printf("Skipped %s because its a temp file!\n", p->fts_path); continue; }
                 
         switch (p->fts_info) {
@@ -96,19 +98,51 @@ int loopOverFiles(char **path, int* sockfd){
                 break;
             case FTS_F:
                 //file
-                printf("-- Synchronising file: %s\n", p->fts_path);
-                if(ModifyCheckClient(sockfd, p->fts_path) < 0){
+                printf("-- Synchronising file: [%s]\n", p->fts_path);
+                if(ModifyCheckFile(sockfd, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
-                    continue;
                 }
+                
+                puts("file check klaar");
                 break;
             default:
                 break;
         }
+        
+        puts("na switch");
     }
+    puts("na eigen loop");
     
     fts_close(ftsp);
-    return 0;
+    sendPacket(*sockfd, STATUS_SYNC, path[0], NULL);
+    char* buffer = malloc(BUFFERSIZE);
+    int ret = MOOI, readCounter = 0;
+    bzero(buffer, BUFFERSIZE);
+    
+    for ( ;; ){
+        if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+            printf("%s(%i, %i)\n", buffer, readCounter, *sockfd);
+            perror("Receive modififycheck result error");
+            ret = STUK;
+            break;
+        } else if (readCounter == 0){
+            puts("read = 0");
+            break;
+        }
+        
+        //sendPacket(*sockfd, STATUS_OK, NULL);
+        readCounter = switchResult(sockfd, buffer);
+        bzero(buffer, BUFFERSIZE);
+        
+        if (readCounter == STUK) break;
+    }
+    
+    //free(buffer);
+    
+    puts("-- Done --");
+    if(ret == STUK) puts("There was an error upon exit");
+    
+    return ret;
 }
 
 /**
@@ -156,40 +190,6 @@ int ConnectNaarServer(int* sockfd){
 }
 
 /**
- * Functie verstuurt de modify-date van een bestand naar de server en
- * krijgt terug welke de nieuwste is.
- * @param sockfd socket waarop gecontroleerd moet worden
- * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
- * @return 0 if succesvol. -1 if failed.
- */
-int ModifyCheckClient(int* sockfd, char* bestandsnaam){
-    struct stat bestandEigenschappen;
-    stat(bestandsnaam, &bestandEigenschappen);
-    
-    char statusCode[4], seconden[40];
-    char* buffer = malloc(BUFFERSIZE);
-    int readCounter = 0;
-    bzero(buffer, BUFFERSIZE);
-    sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
-    sprintf(statusCode, "%d", STATUS_MODCHK);
-    sendPacket(*sockfd, STATUS_MODCHK, bestandsnaam, seconden, NULL);
-    
-    // Wacht op antwoord modifycheck van server
-    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) <= 0) {
-        //printf("%s(%i)\n", buffer, readCounter);
-        perror("Receive modififycheck result error");
-        return STUK;
-    }
-    puts(buffer);
-    sendPacket(*sockfd, STATUS_OK, NULL);
-    
-    readCounter = switchResult(sockfd, buffer);
-    free(buffer);
-            
-    return readCounter;
-}
-
-/**
  * De credentials 
  * @param sockfd
  * @return 
@@ -208,13 +208,13 @@ int SendCredentials(int* sockfd){
     for(;;){
         
         buffer = invoerCommands("Username: ", 50);
-        username = malloc(strlen(buffer));
+        username = malloc(100);
         strcpy(username,buffer);
         
         memset(buffer, 0 , strlen(buffer));
         
         buffer = invoerCommands("Password: ", 50);
-        password = malloc(strlen(buffer));
+        password = malloc(100);
         strcpy(password,buffer);
         hashPassword(password, FIXEDSALT, hex);
         

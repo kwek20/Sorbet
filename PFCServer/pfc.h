@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <sqlite3.h>
 #include <openssl/sha.h>
+#include <fts.h>
 
 
 //Server/Client Defines needed for general options
@@ -48,6 +49,7 @@
 #define STATUS_MODCHK 301 // Client vraagt aan de server of er nieuwe/gewijzigde bestanden zijn.
 #define STATUS_AUTH 302 //Client stuurt credentials naar server.
 #define STATUS_MKDIR 303 //aanvraag voor een create directory
+#define STATUS_SYNC 304 //geeft aan dat hij klaar is voor synchronisatie van de ander
 
 // 4xx Server naar client requests
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
@@ -76,11 +78,13 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
 int waitForOk(int sockfd);
 int ConnectRefused(int* sockfd);
 
+
 //String Editing
 int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 char *toString(int number);
 void getEOF(char *to);
+char* fixServerBestand(int* sockfd, char* bestandsnaam);
 
 //Input user
 char* getInput(int max);
@@ -89,7 +93,8 @@ char* invoerCommands(char* tekstVoor, int aantalChars);
 //Switch functions
 int switchResult(int* sockfd, char* buffer);
 int sendPacket(int fd, int packet, ...);
-char* fixServerBestand(int* sockfd, char* bestandsnaam);
+int loopOverFiles(int* sockfd, char *path);
+int ModifyCheckFile(int* sockfd, char* bestandsnaam);
 
 //Visual presentation
 void printStart(void);

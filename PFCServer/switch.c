@@ -15,7 +15,7 @@
 
 int switchResult(int* sockfd, char* buffer){
     printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
-    char** to = malloc(strlen(buffer));
+    char** to = malloc(10*sizeof(int));
     int bytes = strlen(buffer), ret = 0;
     int statusCode = 0, aantal = transform(buffer, to);
     if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
@@ -30,7 +30,7 @@ int switchResult(int* sockfd, char* buffer){
     
     switch(statusCode) {
         case STATUS_OK:       ret = STATUS_OK; break;
-        case STATUS_EOF:      ret = STATUS_EOF; break;
+        case STATUS_EOF:      ret = STATUS_EOF; break; 
         case STATUS_SAME:     ret = MOOI; break;
         case STATUS_AUTHOK:   ret = STATUS_AUTHOK; break;
         case STATUS_AUTHFAIL: ret = STATUS_AUTHFAIL; break;
@@ -41,16 +41,16 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_OLD:      ret = FileTransferSend(sockfd, to[1]); break;
         case STATUS_NEW:      ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
         case STATUS_CNA:      ret = ConnectRefused(sockfd); break;
+        case STATUS_SYNC:     ret = loopOverFiles(sockfd, to[1]);
         default:              ret = STUK;
     }
     
     if(to){
-        puts("hodor to in switch");
         //free(*to);
         to = NULL;
     }
     
-    buffer = NULL;
+    //buffer = NULL;
     
     return ret;
 }
@@ -79,18 +79,18 @@ int transform(char *text, char** to){
  * @return the amount of splits done (amount of values)
  */
 int transformWith(char *text, char** to, char *delimit){
-    char *temp = malloc(strlen(text));
-    bzero(temp, strlen(text));
+    char *temp = malloc(BUFFERSIZE);
+    bzero(temp, BUFFERSIZE);
     
     temp = strtok(text, delimit);
+    
     int numVars = 0;
 
     while (temp != NULL || temp != '\0'){
-        to[numVars] = malloc(strlen(temp));
-        bzero(to[numVars], strlen(temp));
-        
-        to[numVars] = temp;
-        
+        to[numVars] = malloc(strlen(temp)+1);
+        bzero(to[numVars], strlen(temp)+1);
+        //to[numVars] = temp;
+        strcpy(to[numVars], temp);
         //bzero(temp, strlen(text));
         temp = strtok(NULL, delimit);
         numVars++;
