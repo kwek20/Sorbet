@@ -55,7 +55,6 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
-    puts("2");
     if (waitForOk(*sockfd) == MOOI){
         printf("Received ok!");
     } else {
@@ -126,40 +125,55 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  */
 int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char* savedir = fixServerBestand(sockfd, bestandsnaam);
-    
+    char* filePath = malloc(sizeof(savedir) + 200);
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int file = -1, rec = 0;
     
-    file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    strcpy(filePath, savedir);
+    
+    printf("filePath: %s\n",filePath);
+    file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         //file doesnt exist, lets create the folder shant we?
-        char **path = malloc(strlen(savedir) + 100);
-        bzero(path, strlen(savedir) + 100);
+        puts("1");
+        char **path = malloc(sizeof(int)*10);
+        puts("2");
+        bzero(path, strlen(savedir));
+        puts("3");
         int i, amount = transformWith(savedir, path, "/");
+        puts("4");
         if (amount > 0){
-            char *folderpath = malloc(strlen(savedir));
+            char *folderpath = malloc(strlen(savedir) + 200);
+            puts("5");
             bzero(folderpath, strlen(savedir));
-            
+            puts("6");
             strcpy(folderpath, "");
-
+            puts("7");
             for(i=0; i<amount-1; i++){
                 if (strcmp(path[i], "..") == 0) continue;
-                
+                puts("8");
                 strcat(folderpath, path[i]);
                 strcat(folderpath, "/");
                 printf("mkdir: %s\n", folderpath);
                 mkdir(folderpath, S_IRWXU);
             }
             
-            free(folderpath);
+            puts("Voor folderpath free");
+            //free(folderpath);
+            folderpath = NULL;
             if (path){
+                puts("Voor path free");
                 free(*path);
+                puts("Na path free");
                 *path = NULL;
             }
         }
-        file = open(savedir, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if (file < 0) return STUK;
+        file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (file < 0){
+            puts("file openen nogsteeds stuk");
+            return STUK;
+        }
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
     for ( ;; ){

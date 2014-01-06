@@ -189,7 +189,7 @@ void create(int *sock){
             clients[fd-4].username = malloc(strlen(to[1]));
             strcpy(clients[fd-4].username, to[1]);
             
-            char *folder = malloc(strlen(to[1]) + strlen("userfolders/"));
+            char *folder = malloc(sizeof(to[1]) + strlen("userfolders/"));
             strcpy(folder, "userfolders/");
             strcat(folder, to[1]);
             
@@ -232,8 +232,6 @@ void create(int *sock){
             if ((result = switchResult(&fd, buffer)) == STUK){
                 //error
                 break;
-            } else {
-                //wooo
             }
         }
         bzero(buffer, BUFFERSIZE);
