@@ -165,11 +165,12 @@ int userExists(char* name){
         result = STUK;
     }
     sqlite3_finalize(res);
+    free(sql);
     return result;
 }
 
 char* getPassWord(char *name){
-    char *password = malloc(50);
+    char *password = malloc(SHA256_DIGEST_LENGTH*2+1);
     strcpy(password, "");
     
     if (userExists(name) == MOOI){
@@ -180,7 +181,6 @@ char* getPassWord(char *name){
         strcat(sql, "';");
         sqlite3_stmt* res = selectQuery(sql);
         if (res != NULL) {
-            printf("0\n");
             if (sqlite3_step(res) == SQLITE_ROW){
                 strcpy(password, (char *)sqlite3_column_text(res, 0));
             }
@@ -211,7 +211,6 @@ char* getSalt(char *name) {
     strcat(sql, "';");
     sqlite3_stmt* res = selectQuery(sql);
     if (res != NULL) {
-        printf("0\n");
         if (sqlite3_step(res) == SQLITE_ROW) {
             strcpy(salt, (char *) sqlite3_column_text(res, 0));
         }

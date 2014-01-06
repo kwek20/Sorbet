@@ -174,14 +174,13 @@ void create(int *sock){
     for (i = 0; i < LOGINATTEMPTS; i++){
         bzero(buffer, BUFFERSIZE);
         int bytes = 0;
-        if((bytes = recv(fd, buffer, BUFFERSIZE, 0)) < 0){
+        if((bytes = recv(fd, buffer, BUFFERSIZE, 0)) <= 0){
             perror("recv error");
+            stopClient(fd);
             return;
         }
-
         char** to = malloc(BUFFERSIZE + 100);
         bzero(to, BUFFERSIZE + 100);
-        
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK, NULL);
@@ -204,7 +203,7 @@ void create(int *sock){
         
         if(i < 2){
             sendPacket(fd, STATUS_AUTHFAIL, NULL);
-            
+            printf("Username/PW combinatie fout. Aantal pogingen: %i\n",i+1);
         } else {
             sendPacket(fd, STATUS_CNA, NULL);
             stopClient(fd);
@@ -452,18 +451,21 @@ int printTable(char **args, int amount){
  */
 
 int ReceiveCredentials(char* username, char* password){
-    int temp = 0;
+    puts("1");
     char saltedPassword[SHA256_DIGEST_LENGTH*2];
+    puts("2");
     char *salt = getSalt(username);
+    puts("3");
     
     hashPassword(password, salt, saltedPassword);
-    
+    puts("4");
     
     
     if(strcmp(saltedPassword, getPassWord(username)) != 0){
-        printf("password fail temp: %i\n",temp);
+        puts("4.5");
         return STUK;
     }
+    puts("5");
     return MOOI;
 }
 

@@ -136,23 +136,16 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         //file doesnt exist, lets create the folder shant we?
-        puts("1");
-        char **path = malloc(sizeof(int)*10);
-        puts("2");
+        char **path = malloc(sizeof(int)*25);
         bzero(path, strlen(savedir));
-        puts("3");
+        puts(savedir);
         int i, amount = transformWith(savedir, path, "/");
-        puts("4");
         if (amount > 0){
             char *folderpath = malloc(strlen(savedir) + 200);
-            puts("5");
             bzero(folderpath, strlen(savedir));
-            puts("6");
             strcpy(folderpath, "");
-            puts("7");
             for(i=0; i<amount-1; i++){
                 if (strcmp(path[i], "..") == 0) continue;
-                puts("8");
                 strcat(folderpath, path[i]);
                 strcat(folderpath, "/");
                 printf("mkdir: %s\n", folderpath);
@@ -294,7 +287,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
  * @return 0 if succesvol. -1 if failed.
  */
 int ModifyCheckFile(int* sockfd, char* bestandsnaam){
-    char *path = malloc(strlen(bestandsnaam));
+    char *path = malloc(strlen(bestandsnaam) + 1);
     struct stat bestandEigenschappen;
     bzero(path, strlen(bestandsnaam));
     char* buffer = malloc(BUFFERSIZE);
