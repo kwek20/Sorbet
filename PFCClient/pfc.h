@@ -29,7 +29,7 @@
 
 
 //Server/Client Defines needed for general options
-#define BUFFERSIZE 4096
+#define BUFFERSIZE 64000
 #define NETWERKPOORT 2200
 #define MAX_CLI 10
 //Defines return values

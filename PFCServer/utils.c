@@ -51,7 +51,6 @@ int BestaatDeFile(char* bestandsnaam){
  */
 int FileTransferSend(int* sockfd, char* bestandsnaam){
     char* savedir = fixServerBestand(sockfd, bestandsnaam);
-    
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
@@ -70,8 +69,12 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
      * Herhaal tot bestand compleet ingelezen is.
      */
     while((readCounter = read(bestandfd, buffer, BUFFERSIZE)) > 0){
+        if((send(*sockfd, &readCounter, sizeof(readCounter), 0)) < 0) {
+            perror("FileTransferSend (While): Send readCounter error");
+            return STUK;
+        }        
         if((send(*sockfd, buffer, readCounter, 0)) < 0) {
-            perror("Send file error");
+            perror("FileTransferSend (While): Send file error");
             return STUK;
         }
         
@@ -92,11 +95,9 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     if (sendPacket(*sockfd, STATUS_EOF, NULL) == STUK){
         return STUK;
     }
-    
     if (waitForOk(*sockfd) == MOOI){
         printf("EOF verstuurd en ok ontvangen.\n");
     }
-    
     if(buffer){
         free(buffer);
         buffer = NULL;
@@ -122,6 +123,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int file = -1, rec = 0;
+    int recvCounter = 0;
     
     strcpy(filePath, savedir);
     
@@ -157,23 +159,40 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     }
     sendPacket(*sockfd, STATUS_OK, NULL);
     for ( ;; ){
-        if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
-            return STUK;
-            
-        } else if (rec == 0){
-            return MOOI;
-        } else {
-            if (rec < 50){
-                //want to stop?
-                if(switchResult(sockfd, buffer) == STATUS_EOF){
+        if (recvCounter == 0) {
+            if ((recv(*sockfd, &recvCounter, sizeof(recvCounter), 0)) < 0){
+                return STUK;
+            }
+                if(switchResult(sockfd, (char*)&recvCounter) == STATUS_EOF){
                     //printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
                     break;
                 }
-            }
             
+        }
+        if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
+            return STUK;
+        } else if (rec == 0){
+            return MOOI;
+        } else {
+//            if (rec < 50){
+//                puts("6");
+//                //want to stop?
+//                if(switchResult(sockfd, buffer) == STATUS_EOF){
+//                    //printf("Stopping file transfer!\n");
+//                    puts("7");
+//                    sendPacket(*sockfd, STATUS_OK, NULL);
+//                    break;
+//                }
+//            }
+            
+            recvCounter -= rec;
+            if (recvCounter <= 0) {
+                sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
+                recvCounter = 0;
+            }
             //ack that we received data
-            sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
+            //sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
             write(file, buffer, rec);
             //clear received data

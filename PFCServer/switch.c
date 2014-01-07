@@ -47,11 +47,8 @@ int switchResult(int* sockfd, char* buffer){
     }
     
     if(to){
-        //free(*to);
         to = NULL;
     }
-    
-    //buffer = NULL;
     
     return ret;
 }
@@ -90,9 +87,7 @@ int transformWith(char *text, char** to, char *delimit){
     while (temp != NULL || temp != '\0'){
         to[numVars] = malloc(strlen(temp)+1);
         bzero(to[numVars], strlen(temp)+1);
-        //to[numVars] = temp;
         strcpy(to[numVars], temp);
-        //bzero(temp, strlen(text));
         temp = strtok(NULL, delimit);
         numVars++;
     }
