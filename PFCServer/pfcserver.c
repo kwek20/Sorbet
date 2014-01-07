@@ -451,21 +451,15 @@ int printTable(char **args, int amount){
  */
 
 int ReceiveCredentials(char* username, char* password){
-    puts("1");
     char saltedPassword[SHA256_DIGEST_LENGTH*2];
-    puts("2");
     char *salt = getSalt(username);
-    puts("3");
     
     hashPassword(password, salt, saltedPassword);
-    puts("4");
     
     
     if(strcmp(saltedPassword, getPassWord(username)) != 0){
-        puts("4.5");
         return STUK;
     }
-    puts("5");
     return MOOI;
 }
 

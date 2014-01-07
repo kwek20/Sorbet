@@ -55,19 +55,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
-    if (waitForOk(*sockfd) == MOOI){
-        printf("Received ok!");
-    } else {
-        printf("error?\n");
+    if (waitForOk(*sockfd) != MOOI){
+        printf("FileTransferSend: WaitForOK != Mooi\n");
         return STUK;
     }
     
     if((OpenBestand(savedir)) < 0){
-        puts("file open faal");
-        puts(savedir);
-        return -1;
+        printf("OpenBestand(savedir) error: %s\n", savedir);
+        return STUK;
     }
-    puts(buffer);
     
     /*
      * Lees gegevens uit een bestand. Zet deze in de buffer. Stuur buffer naar server.
@@ -80,7 +76,7 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         }
         
         if (waitForOk(*sockfd) == STUK){
-            printf("error?");
+            printf("FileTransferSend (While): WaitForOK != Mooi\n");
             break;
         }
         
@@ -97,10 +93,8 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         return STUK;
     }
     
-    if (waitForOk(*sockfd) == STUK){
-        //??
-    } else {
-        printf("EOF verstuurd en ok ontvangen. \n");
+    if (waitForOk(*sockfd) == MOOI){
+        printf("EOF verstuurd en ok ontvangen.\n");
     }
     
     if(buffer){
@@ -108,8 +102,7 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
         buffer = NULL;
     }
     
-    if(savedir){
-        //free(savedir);
+    if(savedir){;
         savedir = NULL;
     }
     close(bestandfd);
@@ -132,7 +125,6 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     
     strcpy(filePath, savedir);
     
-    printf("filePath: %s\n",filePath);
     file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
         //file doesnt exist, lets create the folder shant we?
@@ -148,23 +140,18 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
                 if (strcmp(path[i], "..") == 0) continue;
                 strcat(folderpath, path[i]);
                 strcat(folderpath, "/");
-                printf("mkdir: %s\n", folderpath);
                 mkdir(folderpath, S_IRWXU);
             }
             
-            puts("Voor folderpath free");
-            //free(folderpath);
             folderpath = NULL;
             if (path){
-                puts("Voor path free");
                 free(*path);
-                puts("Na path free");
                 *path = NULL;
             }
         }
         file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (file < 0){
-            puts("file openen nogsteeds stuk");
+            printf("FileTransferReceive: open(filePath) error\n");
             return STUK;
         }
     }
@@ -179,7 +166,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             if (rec < 50){
                 //want to stop?
                 if(switchResult(sockfd, buffer) == STATUS_EOF){
-                    printf("Stopping file transfer!\n");
+                    //printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
                     break;
                 }
@@ -189,15 +176,11 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
             write(file, buffer, rec);
-            puts("7");
             //clear received data
             bzero(buffer, BUFFERSIZE);
         }
     }
     changeModTime(savedir, time);
-    
-    //free(savedir);
-    //free(buffer);
     
     close(file);
     return MOOI;
@@ -220,7 +203,6 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
  */
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
-    printf("timeleft: %s, time: %i\n", timeleft, time);
     
     char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
     bzero(buffer, (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
@@ -268,11 +250,9 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     } 
     
     if(buffer){
-        //free(buffer);
         buffer = NULL;
     }
     if(savedir){
-        //free(savedir);
         savedir = NULL;
     }
     return ret;
@@ -295,14 +275,9 @@ int ModifyCheckFile(int* sockfd, char* bestandsnaam){
     int readCounter = 0;
     
     if (IS_CLIENT == STUK){
-        puts("server!!!");
         int len = strlen(clients[*sockfd-4].username) + strlen("/userfolders/");
-        //path = malloc(strlen(bestandsnaam) - len);
-        //bzero(path, strlen(bestandsnaam) - len);
         path = bestandsnaam + len;
     } else {
-        //path = malloc(strlen(bestandsnaam));
-        //(path, strlen(bestandsnaam));
         strcpy(path, bestandsnaam);
     }
 
@@ -313,22 +288,17 @@ int ModifyCheckFile(int* sockfd, char* bestandsnaam){
     sprintf(statusCode, "%d", STATUS_MODCHK);
  
     sendPacket(*sockfd, STATUS_MODCHK, path, seconden, NULL);
-    puts("na sendpacket modchk");
     
     // Wacht op antwoord modifycheck van server
     if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
-        //printf("%s(%i)\n", buffer, readCounter);
         perror("Receive modififycheck result error");
         return STUK;
     }
-    puts(buffer);
     sendPacket(*sockfd, STATUS_OK, NULL);
     
     readCounter = switchResult(sockfd, buffer);
     
-    puts("voor free");
-    free(buffer);
-    puts("na free 2");        
+    free(buffer);      
     
     return MOOI;
 }
@@ -357,7 +327,6 @@ int loopOverFiles(int* sockfd, char *path){
     }
 
     while ((p = fts_read(ftsp)) != NULL) {
-        //puts(p->fts_path);
         if (p->fts_path[strlen(p->fts_path)-1] == '~'){ printf("Skipped %s because its a temp file!\n", p->fts_path); continue; }
                 
         switch (p->fts_info) {
@@ -371,7 +340,7 @@ int loopOverFiles(int* sockfd, char *path){
                 //file
                 printf("-- Synchronising file: %s\n", p->fts_path);
                 if(ModifyCheckFile(sockfd, p->fts_path) < 0){
-                    printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
+                    printf("-- Synchronising of file: %s failed\n", p->fts_path);
                     continue;
                 }
                 break;
@@ -379,23 +348,18 @@ int loopOverFiles(int* sockfd, char *path){
                 break;
         }
     }
-    
-    puts("voor laatste deel");
                 
     if(dir){
         free(*dir);
         dir = NULL;
     }
-    
-    puts("voor fts close");
+
     fts_close(ftsp);
-    puts("na fts close");
     return MOOI;
 }
 
 int CreateFolder(int* sockfd, char* bestandsnaam){
     char* savedir = fixServerBestand(sockfd, bestandsnaam);
-    printf("savedir: %s\n", savedir);
     
     char **path = malloc(strlen(savedir) + 100);
     bzero(path, strlen(savedir) + 100);
@@ -411,22 +375,17 @@ int CreateFolder(int* sockfd, char* bestandsnaam){
                 
             strcat(folderpath, path[i]);
             strcat(folderpath, "/");
-            printf("mkdir: %s\n", folderpath);
             mkdir(folderpath, S_IRWXU);
         }
-        //free(folderpath);
     }
     
     if (path){
         free(*path);
         *path = NULL;
     }
-    
-    puts("voor send");
+
     sendPacket(*sockfd, STATUS_OK, NULL);
-    puts("voor free");
     free(savedir);
-    puts("na free");
     return MOOI;
 }
 
@@ -467,7 +426,6 @@ int sendPacket(int fd, int packet, ...){
     va_start(ap, packet);
     
     for (i = p; i != NULL; i = va_arg(ap, char *)){
-        //printf("[%s] | [%c]-[%u] | [%c]-[%u] | %i\n",p,p[strlen(p)-2],(unsigned char)p[strlen(p)-2],p[strlen(p)-2],(unsigned char)p[strlen(p)-1],strlen(p));
         if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
             i[strlen(i)-1] = '\0';
         }    
@@ -493,7 +451,7 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+    //printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
     free(info);
     free(p);
     
@@ -558,10 +516,9 @@ int waitForOk(int sockfd){
         return STUK;
     }
     
-    printf("buffer: %s\n", buffer);
     if(switchResult(&sockfd, buffer) != STATUS_OK){
         free(buffer);
-        puts("notgood ;(");
+        printf("WaitForOK(): SwitchResult != STATUS_OK");
         return STUK;
     }
     
@@ -655,9 +612,9 @@ int convertHashToString(char *stringHash, unsigned char hash[]) {
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
-        printf("%s, ", array[i]);
+        //printf("%s, ", array[i]);
     }
-    puts("\n");
+    //puts("\n");
 }
 
 /**

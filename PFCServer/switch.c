@@ -14,17 +14,18 @@
 #include "pfc.h"
 
 int switchResult(int* sockfd, char* buffer){
-    printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+    //printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
     char** to = malloc(10*sizeof(int));
-    int bytes = strlen(buffer), ret = 0;
+    //int bytes = strlen(buffer), ret = 0;
+    int ret = 0;
     int statusCode = 0, aantal = transform(buffer, to);
     if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
     
     if((statusCode = atoi(to[0])) < 100){
-        printf("error with statusCode (%i)\n", statusCode);
+        //printf("error with statusCode (%i)\n", statusCode);
         return STUK;
     }
-    printf("Received packet: %i(%i) data: \n", statusCode, bytes);
+    //printf("Received packet: %i(%i) data: \n", statusCode, bytes);
     printArray(aantal, to);
     bzero(buffer, strlen(buffer));
     

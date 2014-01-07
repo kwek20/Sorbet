@@ -84,8 +84,6 @@ int loopOverFilesS(char **path, int* sockfd){
     }
 
     while ((p = fts_read(ftsp))) {
-        //puts(p->fts_path);
-        puts("begin nieuwe file");
         
         if (p->fts_path[strlen(p->fts_path)-1] == '~'){ printf("Skipped %s because its a temp file!\n", p->fts_path); continue; }
                 
@@ -93,8 +91,6 @@ int loopOverFilesS(char **path, int* sockfd){
             case FTS_D:
                 //directory
                 printf("-- Searching in directory: %s\n", p->fts_path);
-                //sendPacket(*sockfd, STATUS_MKDIR, p->fts_path, NULL);
-                //waitForOk(*sockfd);
                 break;
             case FTS_F:
                 //file
@@ -102,16 +98,12 @@ int loopOverFilesS(char **path, int* sockfd){
                 if(ModifyCheckFile(sockfd, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
                 }
-                
-                puts("file check klaar");
+
                 break;
             default:
                 break;
         }
-        
-        puts("na switch");
     }
-    puts("na eigen loop");
     
     fts_close(ftsp);
     sendPacket(*sockfd, STATUS_SYNC, path[0], NULL);
@@ -121,23 +113,19 @@ int loopOverFilesS(char **path, int* sockfd){
     
     for ( ;; ){
         if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
-            printf("%s(%i, %i)\n", buffer, readCounter, *sockfd);
+            //printf("%s(%i, %i)\n", buffer, readCounter, *sockfd);
             perror("Receive modififycheck result error");
             ret = STUK;
             break;
         } else if (readCounter == 0){
-            puts("read = 0");
             break;
         }
         
-        //sendPacket(*sockfd, STATUS_OK, NULL);
         readCounter = switchResult(sockfd, buffer);
         bzero(buffer, BUFFERSIZE);
         
         if (readCounter == STUK) break;
     }
-    
-    //free(buffer);
     
     puts("-- Done --");
     if(ret == STUK) puts("There was an error upon exit");
