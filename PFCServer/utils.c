@@ -54,6 +54,12 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
+    
+    struct timeval tv;
+    time_t starttime, endtime, time;
+    gettimeofday(&tv,NULL);
+    starttime = tv.tv_sec;
+    
     if (waitForOk(*sockfd) != MOOI){
         printf("FileTransferSend: WaitForOK != Mooi\n");
         return STUK;
@@ -95,7 +101,7 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     if (sendPacket(*sockfd, STATUS_EOF, NULL) == STUK){
         return STUK;
     }
-    if (waitForOk(*sockfd) == MOOI){
+    if (waitForOk(*sockfd) == MOOI && DEBUG == 1){
         printf("EOF verstuurd en ok ontvangen.\n");
     }
     if(buffer){
@@ -106,6 +112,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     if(savedir){;
         savedir = NULL;
     }
+    
+    if(DEBUG >= 1){
+        gettimeofday(&tv,NULL);
+        endtime = tv.tv_sec;
+        time = endtime - starttime;
+        if(time < 1){time+=1;};
+        printf("Time: %u second(s)\n", (unsigned int) time);
+    }
+    
     close(bestandfd);
     return MOOI;
 }
@@ -129,7 +144,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     
     file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
-        //file doesnt exist, lets create the folder shant we?
+        //File doesn't exist, lets create the folder shall we?
         char **path = malloc(sizeof(int)*25);
         bzero(path, strlen(savedir));
         puts(savedir);
@@ -164,7 +179,6 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
                 return STUK;
             }
                 if(switchResult(sockfd, (char*)&recvCounter) == STATUS_EOF){
-                    //printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
                     break;
                 }
@@ -175,27 +189,14 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
         } else if (rec == 0){
             return MOOI;
         } else {
-//            if (rec < 50){
-//                puts("6");
-//                //want to stop?
-//                if(switchResult(sockfd, buffer) == STATUS_EOF){
-//                    //printf("Stopping file transfer!\n");
-//                    puts("7");
-//                    sendPacket(*sockfd, STATUS_OK, NULL);
-//                    break;
-//                }
-//            }
-            
             recvCounter -= rec;
             if (recvCounter <= 0) {
                 sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
                 recvCounter = 0;
             }
-            //ack that we received data
-            //sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
-            //save it all
+            //Save files
             write(file, buffer, rec);
-            //clear received data
+            //Clear buffer
             bzero(buffer, BUFFERSIZE);
         }
     }
@@ -242,7 +243,6 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         if ((owntime = modifiedTime(savedir)) < time){
             //own file older
             sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
-            //sendPacket(*sockfd, STATUS_NEW, NULL);
 
             sprintf(buffer, "%i", STATUS_NEW);
             strcat(buffer, ":");
@@ -350,13 +350,11 @@ int loopOverFiles(int* sockfd, char *path){
                 
         switch (p->fts_info) {
             case FTS_D:
-                //directory
+                //Directory
                 printf("-- Searching in directory: %s\n", p->fts_path);
-                //sendPacket(*sockfd, STATUS_MKDIR, p->fts_path, NULL);
-                //waitForOk(*sockfd);
                 break;
             case FTS_F:
-                //file
+                //File
                 printf("-- Synchronising file: %s\n", p->fts_path);
                 if(ModifyCheckFile(sockfd, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed\n", p->fts_path);
@@ -470,7 +468,9 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    //printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+    if(DEBUG >= 2){
+        printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+    }
     free(info);
     free(p);
     
@@ -631,9 +631,9 @@ int convertHashToString(char *stringHash, unsigned char hash[]) {
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
-        //printf("%s, ", array[i]);
+        printf("%s, ", array[i]);
     }
-    //puts("\n");
+    puts("\n");
 }
 
 /**
@@ -669,5 +669,17 @@ void printStart(void){
     puts("|             \\  /          |");
     puts("|            __)(__         |");
     puts("|           '------`        |");
-    puts("-----------------------------\n");
+    puts("-----------------------------");
+    
+    if(DEBUG >= 1){
+        puts(" _____  ______ ____  _    _  _____ ");
+        puts("|  __ \\|  ____|  _ \\| |  | |/ ____|");
+        puts("| |  | | |__  | |_) | |  | | |  __ ");
+        puts("| |  | |  __| |  _ <| |  | | | |_ |");
+        puts("| |__| | |____| |_) | |__| | |__| |");
+        puts("|_____/|______|____/ \\____/ \\_____|");
+        printf("Debug mode: %i\n\n", DEBUG);
+    } else {
+        puts("");
+    }
 }

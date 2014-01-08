@@ -26,12 +26,15 @@
 #include <sqlite3.h>
 #include <openssl/sha.h>
 #include <fts.h>
+#include <math.h>
 
 
 //Server/Client Defines needed for general options
 #define BUFFERSIZE 64000
 #define NETWERKPOORT 2200
 #define MAX_CLI 10
+//Debug mode 0 off, 1 speedtest, 2 error debug
+#define DEBUG 0
 //Defines return values
 #define STUK -1
 #define MOOI 0

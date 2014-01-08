@@ -21,6 +21,10 @@ int SendCredentials(int* sockfd);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 int loopOverFilesS(char **path, int* sockfd);
 
+
+struct timeval globalTv;
+time_t globalStarttime, globalEndtime, globalTime;
+
 int main(int argc, char** argv) {
     
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
@@ -71,6 +75,14 @@ int loopOverFilesS(char **path, int* sockfd){
     FTS *ftsp;
     FTSENT *p, *chp;
     int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
+    int totalSize = 0;
+    
+    struct stat st;
+    
+    if (DEBUG >= 1){
+        gettimeofday(&globalTv,NULL);
+        globalStarttime = globalTv.tv_sec;
+    }
     
     if ((ftsp = fts_open((char * const *) path, fts_options, 0)) == NULL) {
          perror("fts_open");
@@ -94,11 +106,13 @@ int loopOverFilesS(char **path, int* sockfd){
                 break;
             case FTS_F:
                 //file
-                printf("-- Synchronising file: [%s]\n", p->fts_path);
+                stat(p->fts_path, &st);
+                int size = st.st_size;
+                totalSize += size;
+                printf("-- Synchronising file: [%s] | Size in Bytes: [%i]\n", p->fts_path, size);
                 if(ModifyCheckFile(sockfd, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
                 }
-
                 break;
             default:
                 break;
@@ -127,7 +141,18 @@ int loopOverFilesS(char **path, int* sockfd){
         if (readCounter == STUK) break;
     }
     
-    puts("-- Done --");
+    puts("\n-- Done --\n");
+    
+    if (DEBUG >= 1){
+    gettimeofday(&globalTv,NULL);
+    globalEndtime = globalTv.tv_sec;
+    globalTime = globalEndtime - globalStarttime;
+    
+    printf("Summary:\n");
+    printf("Total running time: %u second(s)\n", (unsigned int) globalTime);
+    printf("Total size of directory including subdirectories: %i MB\n\n", totalSize/1000000);
+    }
+    
     if(ret == STUK) puts("There was an error upon exit");
     
     return ret;

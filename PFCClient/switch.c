@@ -14,19 +14,18 @@
 #include "pfc.h"
 
 int switchResult(int* sockfd, char* buffer){
-    //printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+    if(DEBUG >= 2){
+        printf("[switchResult]: Raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+    }
     char** to = malloc(10*sizeof(int));
-    //int bytes = strlen(buffer), ret = 0;
     int ret = 0;
     int statusCode = 0, aantal = transform(buffer, to);
     if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
     
     if((statusCode = atoi(to[0])) < 100){
-        //printf("error with statusCode (%i)\n", statusCode);
         return STUK;
     }
-    //printf("Received packet: %i(%i) data: \n", statusCode, bytes);
-    printArray(aantal, to);
+    if(DEBUG >= 2){printArray(aantal, to);};
     bzero(buffer, strlen(buffer));
     
     switch(statusCode) {
@@ -47,11 +46,8 @@ int switchResult(int* sockfd, char* buffer){
     }
     
     if(to){
-        //free(*to);
         to = NULL;
     }
-    
-    //buffer = NULL;
     
     return ret;
 }
@@ -90,9 +86,7 @@ int transformWith(char *text, char** to, char *delimit){
     while (temp != NULL || temp != '\0'){
         to[numVars] = malloc(strlen(temp)+1);
         bzero(to[numVars], strlen(temp)+1);
-        //to[numVars] = temp;
         strcpy(to[numVars], temp);
-        //bzero(temp, strlen(text));
         temp = strtok(NULL, delimit);
         numVars++;
     }
