@@ -25,6 +25,8 @@
 #include <stdarg.h>
 #include <sqlite3.h>
 #include <openssl/sha.h>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
 #include <fts.h>
 
 
@@ -66,9 +68,9 @@
 int IS_CLIENT;
 
 //file encrypt
-int aes_init(unsigned char* pwd, unsigned int pwd_len, unsigned char * salt);
-int aes_encrypt(char* input, char* returnChar);
-int aes_decrypt(char* outbuf, char* returnChar);
+int aes_init(unsigned char *key_data, int key_data_len, unsigned char *salt);
+ char *aes_encrypt(unsigned char *plaintext, int *len);
+ char *aes_decrypt(unsigned char *ciphertext, int *len);
 
 //File Functions
 int BestaatDeFile(char* fileName);

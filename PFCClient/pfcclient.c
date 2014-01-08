@@ -34,19 +34,19 @@ int main(int argc, char** argv) {
     
     IS_CLIENT = MOOI;
     
-    initEncrypt();
+//    initEncrypt();
+//    
+//    char* from = malloc(100);
+//    strcpy(from, "hallo dit is een test");
+//    
+//    char* to = malloc(BUFFERSIZE);
+//    
+//    int bytes = aes_encrypt(from, to);
+//    
+//    printf("Original: %s\n", from);
+//    printf("New: %s, length: %i\n", to, bytes);
     
-    char* from = malloc(100);
-    strcpy(from, "hallo dit is een test");
-    
-    char* to = malloc(BUFFERSIZE);
-    
-    int bytes = aes_encrypt(from, to);
-    
-    printf("Original: %s\n", from);
-    printf("New: %s, length: %i\n", to, bytes);
-    
-    //pfcClient(argv);
+    pfcClient(argv);
     
     return (EXIT_SUCCESS);
 }
@@ -149,7 +149,7 @@ int initEncrypt(){
     }
                                       
     unsigned int pwd_len = strlen(pwd);
-
+    
     if(aes_init((unsigned char*)pwd,pwd_len,(unsigned char*) salt)){                /* Generating Key and IV and initializing the EVP struct */
         perror("\n Error, Cant initialize key and IV");
         return STUK;

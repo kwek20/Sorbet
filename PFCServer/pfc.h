@@ -25,6 +25,8 @@
 #include <stdarg.h>
 #include <sqlite3.h>
 #include <openssl/sha.h>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
 #include <fts.h>
 
 

@@ -73,6 +73,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
             perror("FileTransferSend (While): Send readCounter error");
             return STUK;
         }        
+        
+        if (IS_CLIENT == MOOI){
+             char* tempbuf = ( char *)malloc(readCounter);
+            strcpy(tempbuf, buffer);
+                
+            buffer = aes_encrypt((unsigned char *)tempbuf, &readCounter);
+            free(tempbuf);
+        }
+        
         if((send(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("FileTransferSend (While): Send file error");
             return STUK;
@@ -195,7 +204,16 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             //ack that we received data
             //sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
+            if (IS_CLIENT == MOOI){
+                 char* tempbuf = ( char *)malloc(rec);
+                strcpy(tempbuf, buffer);
+                
+                buffer = aes_decrypt((unsigned char *)tempbuf, &rec);
+                free(tempbuf);
+            }
+            
             write(file, buffer, rec);
+            
             //clear received data
             bzero(buffer, BUFFERSIZE);
         }
