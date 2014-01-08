@@ -29,7 +29,7 @@
 
 
 //Server/Client Defines needed for general options
-#define BUFFERSIZE 64000
+#define BUFFERSIZE 65535
 #define NETWERKPOORT 2200
 #define MAX_CLI 10
 //Defines return values
@@ -64,6 +64,11 @@
 
 //De client vult hier true in. De server false. Dit is nodig voor sommige functies
 int IS_CLIENT;
+
+//file encrypt
+int aes_init(unsigned char* pwd, unsigned int pwd_len, unsigned char * salt);
+int aes_encrypt(char* input, char* returnChar);
+int aes_decrypt(char* outbuf, char* returnChar);
 
 //File Functions
 int BestaatDeFile(char* fileName);

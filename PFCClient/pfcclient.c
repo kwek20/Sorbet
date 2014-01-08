@@ -21,6 +21,10 @@ int SendCredentials(int* sockfd);
 int ModifyCheckClient(int* sockfd, char* bestandsnaam);
 int loopOverFilesS(char **path, int* sockfd);
 
+int initEncrypt();
+char* getRandom(int size);
+char* newPwd(int pwdSize);
+
 int main(int argc, char** argv) {
     
     // Usage: pfcclient /tmp/test.txt 192.168.1.1
@@ -29,12 +33,25 @@ int main(int argc, char** argv) {
     argv[2] = "127.0.0.1"; //moet nog veranderd worden
     
     IS_CLIENT = MOOI;
-    pfcClient(argv);
+    
+    initEncrypt();
+    
+    char* from = malloc(100);
+    strcpy(from, "hallo dit is een test");
+    
+    char* to = malloc(BUFFERSIZE);
+    
+    int bytes = aes_encrypt(from, to);
+    
+    printf("Original: %s\n", from);
+    printf("New: %s, length: %i\n", to, bytes);
+    
+    //pfcClient(argv);
     
     return (EXIT_SUCCESS);
 }
 
-/**
+/** 
  * Hoofdprogramma voor de pfcClient
  * @param argv argumenten van commandline
  * @return 0 if succesvol. -1 if failed.
@@ -42,7 +59,13 @@ int main(int argc, char** argv) {
 int pfcClient(char** argv){
    int sockfd;
 
+   if(initEncrypt() != MOOI){
+       puts("Could not load private encryption key");
+       exit(EXIT_FAILURE);
+   }
+
    if((ServerGegevens(argv[2])) < 0){
+       puts("Could not load server details");
        exit(EXIT_FAILURE);
    }
    
@@ -65,6 +88,74 @@ int pfcClient(char** argv){
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    
    exit(loopOverFilesS(argv + 1, &sockfd));
+}
+
+char* getRandom(int size){
+    char *pwd = malloc(size+1);
+    strcpy(pwd, "");
+    
+    char *buff = malloc(size+1);
+    int currentSize = 0, randomfd, readSize;
+    
+    while (currentSize < size){
+        if((randomfd = open("/dev/urandom", O_RDONLY)) == -1){
+            perror("\n Error,Opening /dev/random::");
+            return pwd;
+        } else {
+            if((readSize = read(randomfd,buff,size)) == -1) {
+                perror("\n Error,reading from /dev/random::");
+                return pwd;
+            }
+            currentSize += readSize;
+            strcat(pwd, buff);
+            close(randomfd);
+        }
+    }
+    return pwd;    
+}
+
+char* newPwd(int pwdSize){
+    int keyfd;
+    char* pwd;
+    
+    if((keyfd = open("secret.key",O_RDWR|O_CREAT, 0777)) == STUK){
+        perror("\n Could not create secret.key");
+        return "";
+    } else {
+        pwd = getRandom(pwdSize);
+        keyfd = write(keyfd, pwd, pwdSize);
+        close(keyfd);
+    }
+    return pwd;
+}
+
+int initEncrypt(){
+    int readSize, keyfd, pwdSize = 256;
+    char buffer[pwdSize];
+    char *salt = "SoRbEt";
+    char *pwd = malloc(pwdSize+1);
+    
+    if((keyfd = open("secret.key",O_RDWR)) == STUK){
+        pwd = newPwd(pwdSize);
+    } else {
+        while ((readSize = read(keyfd, buffer, pwdSize)) > 0){
+            strcat(pwd, buffer);
+        }
+        
+        if (strlen(buffer) < pwdSize){
+            pwd = newPwd(pwdSize);
+        }
+        close(keyfd);
+    }
+                                      
+    unsigned int pwd_len = strlen(pwd);
+
+    if(aes_init((unsigned char*)pwd,pwd_len,(unsigned char*) salt)){                /* Generating Key and IV and initializing the EVP struct */
+        perror("\n Error, Cant initialize key and IV");
+        return STUK;
+    }
+    
+    return MOOI;
 }
 
 int loopOverFilesS(char **path, int* sockfd){
