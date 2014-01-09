@@ -43,7 +43,7 @@
       </toolsSet>
       <compileType>
         <cTool>
-          <commandLine>-V -lpthread -lsqlite3</commandLine>
+          <commandLine>-lcrypto</commandLine>
           <warningLevel>2</warningLevel>
         </cTool>
       </compileType>

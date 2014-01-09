@@ -73,13 +73,12 @@ int pfcClient(char** argv){
    if (argv[1] == NULL){
        char cwd[1024];
        getcwd(cwd, sizeof(cwd));
-       puts(cwd);
        argv[1] = cwd;
    }
    
    // Create socket
    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-       perror("Create socket error:");
+       perror("Create socket error");
        exit(EXIT_FAILURE);
    }
    
@@ -88,6 +87,33 @@ int pfcClient(char** argv){
    if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
    
    exit(loopOverFilesS(argv + 1, &sockfd));
+}
+
+int initEncrypt(){
+    int readSize=0, keyfd=0, pwdSize = 8;
+    char *buffer = malloc(pwdSize+1);
+    //char *salt = "SoRbEt";
+    char *pwd = malloc(pwdSize+1);
+    strcpy(pwd, "");
+    if((keyfd = open("secret.key",O_RDWR)) == STUK){
+        pwd = newPwd(pwdSize);
+    } else {
+        readSize = read(keyfd, buffer, pwdSize);
+        if (readSize == 8){
+            strcat(pwd, buffer);
+        } else {
+            pwd = newPwd(pwdSize);
+        }
+        close(keyfd);
+    }              
+    unsigned int pwd_len = strlen(pwd);
+    if(aes_init((unsigned char*)pwd,pwd_len,(unsigned char*) FIXEDSALT)){                /* Generating Key and IV and initializing the EVP struct */
+        perror("\n Error, Cant initialize key and IV");
+        return STUK;
+    }
+    free(pwd);
+    free(buffer);
+    return MOOI;
 }
 
 char* getRandom(int size){
@@ -116,7 +142,7 @@ char* getRandom(int size){
 
 char* newPwd(int pwdSize){
     int keyfd;
-    char* pwd;
+    char* pwd = malloc(pwdSize+1);
     
     if((keyfd = open("secret.key",O_RDWR|O_CREAT, 0777)) == STUK){
         perror("\n Could not create secret.key");
@@ -127,35 +153,6 @@ char* newPwd(int pwdSize){
         close(keyfd);
     }
     return pwd;
-}
-
-int initEncrypt(){
-    int readSize, keyfd, pwdSize = 256;
-    char buffer[pwdSize];
-    char *salt = "SoRbEt";
-    char *pwd = malloc(pwdSize+1);
-    
-    if((keyfd = open("secret.key",O_RDWR)) == STUK){
-        pwd = newPwd(pwdSize);
-    } else {
-        while ((readSize = read(keyfd, buffer, pwdSize)) > 0){
-            strcat(pwd, buffer);
-        }
-        
-        if (strlen(buffer) < pwdSize){
-            pwd = newPwd(pwdSize);
-        }
-        close(keyfd);
-    }
-                                      
-    unsigned int pwd_len = strlen(pwd);
-    
-    if(aes_init((unsigned char*)pwd,pwd_len,(unsigned char*) salt)){                /* Generating Key and IV and initializing the EVP struct */
-        perror("\n Error, Cant initialize key and IV");
-        return STUK;
-    }
-    
-    return MOOI;
 }
 
 int loopOverFilesS(char **path, int* sockfd){
@@ -260,7 +257,7 @@ int ServerGegevens(char* ip){
 int ConnectNaarServer(int* sockfd){
     
     if((connect(*sockfd,(struct sockaddr*)&serv_addr, sizeof(serv_addr))) < 0){
-        perror("Connect error:");
+        perror("Connect error");
         return -1;
     }
     
@@ -287,25 +284,31 @@ int SendCredentials(int* sockfd){
     for(;;){
         
         buffer = invoerCommands("Username: ", 50);
-        username = malloc(100);
+        
+        username = malloc(strlen(buffer)+1);
+        bzero(username, strlen(buffer)+1);
         strcpy(username,buffer);
         
-        memset(buffer, 0 , strlen(buffer));
+        bzero(buffer, strlen(buffer));
         
         buffer = invoerCommands("Password: ", 50);
-        password = malloc(100);
+        
+        password = malloc(strlen(buffer)+1);
+        bzero(password, strlen(buffer)+1);
         strcpy(password,buffer);
+        
         hashPassword(password, FIXEDSALT, hex);
         
-        memset(buffer, 0 , strlen(buffer));
+        free(buffer);
+        buffer = malloc(BUFFERSIZE);
         
         printf("ready to send\n");
         sendPacket(*sockfd, STATUS_AUTH, username, hex, NULL);
+        
         if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
         }
-
         sR = switchResult(sockfd, buffer);
         
         free(username); free(password), free(buffer);
@@ -326,7 +329,7 @@ int SendCredentials(int* sockfd){
  * @return returns buffer pointer
  */
 char* invoerCommands(char* tekstVoor, int aantalChars){
-    char* buffer;
+    char* buffer = malloc(aantalChars);
     for(;;){
         printf("%s",tekstVoor);
         buffer = getInput(aantalChars);

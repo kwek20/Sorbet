@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     
     //make server data
     struct sockaddr_in server_addr = getServerAddr(poort);
-    clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
+    //clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
     
     //make a socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -181,11 +181,12 @@ void create(int *sock){
         }
         char** to = malloc(BUFFERSIZE + 100);
         bzero(to, BUFFERSIZE + 100);
-        transform(buffer, to);
-        if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
+        int amount = transform(buffer, to);
+        
+        if(amount == 3 && (temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(fd, STATUS_AUTHOK, NULL);
             //add username
-            clients[fd-4].username = malloc(strlen(to[1]));
+            clients[fd-4].username = malloc(strlen(to[1])+1);
             strcpy(clients[fd-4].username, to[1]);
             
             char *folder = malloc(sizeof(to[1]) + strlen("userfolders/"));
@@ -357,9 +358,9 @@ int clientinfo(char **args, int amount){
             printClientInfo(clients[i], i);
         }
     }
-    
-    for (i=0; i<MAX_CLI; i++){
-        if (clients[i].client.sin_port != 0){
+    for (i=0; i<MAX_CLI; i++){\
+        if (clients[i].username != NULL){
+            printf("hmm22\n");
             j = 1;
             printClientInfo(clients[i], i+1);
         }
@@ -451,15 +452,18 @@ int printTable(char **args, int amount){
  */
 
 int ReceiveCredentials(char* username, char* password){
-    char saltedPassword[SHA256_DIGEST_LENGTH*2];
+    char *saltedPassword = malloc(SHA256_DIGEST_LENGTH*2+1);
     char *salt = getSalt(username);
     
     hashPassword(password, salt, saltedPassword);
     
-    
+    int ret = MOOI;
     if(strcmp(saltedPassword, getPassWord(username)) != 0){
-        return STUK;
+        ret = STUK;
     }
-    return MOOI;
+    
+    free(salt);
+    free(saltedPassword);
+    return ret;
 }
 

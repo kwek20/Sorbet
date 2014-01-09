@@ -73,6 +73,16 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
             perror("FileTransferSend (While): Send readCounter error");
             return STUK;
         }        
+        
+        if (IS_CLIENT == MOOI){
+            char* tempbuf = malloc(readCounter+1);
+            strcpy(tempbuf, buffer);
+                
+            bzero(buffer, BUFFERSIZE);
+            buffer = aes_encrypt((unsigned char *)tempbuf, &readCounter);
+            free(tempbuf);
+        }
+        
         if((send(*sockfd, buffer, readCounter, 0)) < 0) {
             perror("FileTransferSend (While): Send file error");
             return STUK;
@@ -163,6 +173,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             if ((recv(*sockfd, &recvCounter, sizeof(recvCounter), 0)) < 0){
                 return STUK;
             }
+            printf("recvCounter: %i\n", recvCounter);
                 if(switchResult(sockfd, (char*)&recvCounter) == STATUS_EOF){
                     //printf("Stopping file transfer!\n");
                     sendPacket(*sockfd, STATUS_OK, NULL);
@@ -194,7 +205,16 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             //ack that we received data
             //sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
             //save it all
+            if (IS_CLIENT == MOOI){
+                 char* tempbuf = ( char *)malloc(rec);
+                strcpy(tempbuf, buffer);
+                
+                buffer = aes_decrypt((unsigned char *)tempbuf, &rec);
+                free(tempbuf);
+            }
+            
             write(file, buffer, rec);
+            
             //clear received data
             bzero(buffer, BUFFERSIZE);
         }
@@ -222,9 +242,10 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
  */
 int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
-    
-    char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
-    bzero(buffer, (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
+    printf("total: %i, best: %i\n", (int)((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam)), (int)strlen(bestandsnaam));
+    int size = (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam)+10;
+    char *buffer = malloc(size);
+    bzero(buffer, size);
     strcpy(buffer, "");
     
     char *savedir = fixServerBestand(sockfd, bestandsnaam);
@@ -262,7 +283,8 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
             return MOOI;
         }
     }
-    close(file);
+    if (file > -1) close(file);
+    
     int ret = STUK;
     if (waitForOk(*sockfd) == MOOI){
         ret = switchResult(sockfd, buffer);
@@ -416,7 +438,7 @@ int CreateFolder(int* sockfd, char* bestandsnaam){
  */
 char* fixServerBestand(int* sockfd, char* bestandsnaam){
     if (IS_CLIENT == MOOI) return bestandsnaam;
-    
+    //printf("/userfolders: %i, bestandsnaam: %i, username: %i", (int)strlen("/userfolders/ "), (int)strlen(bestandsnaam), (int)strlen(clients[*sockfd-4].username));
     char* savedir = malloc(strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
     bzero(savedir, (strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)));
     strcpy(savedir, "");
@@ -433,7 +455,7 @@ char* fixServerBestand(int* sockfd, char* bestandsnaam){
 int sendPacket(int fd, int packet, ...){
     char *info = malloc(BUFFERSIZE);
     bzero(info, BUFFERSIZE);
-    strcpy(info, "");
+    
     char *p = malloc(BUFFERSIZE);
     bzero(p, BUFFERSIZE);
     
@@ -445,15 +467,15 @@ int sendPacket(int fd, int packet, ...){
     va_start(ap, packet);
     
     for (i = p; i != NULL; i = va_arg(ap, char *)){
-        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
-            i[strlen(i)-1] = '\0';
-        }    
-        if(((unsigned char)i[strlen(i)-2]) == 9 || ((unsigned char)i[strlen(i)-2]) == 16){
-            i[strlen(i)-2] = '\0';
-        }   
-        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
-            i[strlen(i)-1] = '\0';
-        }
+//        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+//            i[strlen(i)-1] = '\0';
+//        }    
+//        if(((unsigned char)i[strlen(i)-2]) == 9 || ((unsigned char)i[strlen(i)-2]) == 16){
+//            i[strlen(i)-2] = '\0';
+//        }   
+//        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+//            i[strlen(i)-1] = '\0';
+//        }
         sprintf(p, "%s", i);
         strcat(info, p);
         strcat(info, ":");
@@ -461,7 +483,6 @@ int sendPacket(int fd, int packet, ...){
 
     }
     va_end(ap);
-    
     info[strlen(info)-1] = '\0';
      
     int bytes;
@@ -470,7 +491,7 @@ int sendPacket(int fd, int packet, ...){
         perror("send");
         return STUK;
     }
-    //printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, (int)strlen(info));
     free(info);
     free(p);
     
@@ -483,7 +504,7 @@ int sendPacket(int fd, int packet, ...){
  * @return de meegegeven integer als string
  */
 char *toString(int number){
-    char *nr = malloc(10);
+    char *nr = malloc(20);
     bzero(nr, 10);
     
     sprintf(nr, "%i", number);
@@ -573,6 +594,7 @@ int hashPassword(char *password, char *salt, char to[]) {
     // Initialiseer struct
     SHA256_Init(&ctx);
     
+    printf("password: %s\n", password);
     // Plaats wachtwoord in struct 
     SHA256_Update(&ctx, password,  strlen(password));
 
@@ -631,9 +653,9 @@ int convertHashToString(char *stringHash, unsigned char hash[]) {
 void printArray(int length, char *array[]){
     int i;
     for (i=0; i<length; i++){
-        //printf("%s, ", array[i]);
+        printf("%s, ", array[i]);
     }
-    //puts("\n");
+    puts("\n");
 }
 
 /**

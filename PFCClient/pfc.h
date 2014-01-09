@@ -134,4 +134,4 @@ typedef struct clientsinfo{
     char* username;
 } clientsinfo;
 
-clientsinfo *clients;
+clientsinfo clients[MAX_CLI];

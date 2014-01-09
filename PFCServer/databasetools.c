@@ -202,10 +202,10 @@ int removeUser(char **args, int amount){
 }
 
 char* getSalt(char *name) {
-    char *salt = malloc(SHA256_DIGEST_LENGTH * 2);
+    char *salt = malloc(SHA256_DIGEST_LENGTH * 2 + 1);
     strcpy(salt, "");
 
-    char *sql = malloc(100);
+    char *sql = malloc(150);
     strcpy(sql, "SELECT SALT FROM USERS WHERE NAME = '");
     strcat(sql, name);
     strcat(sql, "';");
@@ -215,6 +215,7 @@ char* getSalt(char *name) {
             strcpy(salt, (char *) sqlite3_column_text(res, 0));
         }
     }
+    free(sql);
     sqlite3_finalize(res);
     //shouldnt happen
     return salt;
