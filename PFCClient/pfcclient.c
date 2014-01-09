@@ -29,13 +29,16 @@ struct timeval globalTv;
 time_t globalStarttime, globalEndtime, globalTime;
 
 int main(int argc, char** argv) {
-    
-    // Usage: pfcclient /tmp/test.txt 192.168.1.1
-    //argc = 3;
-    //argv[1] = "test.txt";
-    argv[2] = "127.0.0.1"; //moet nog veranderd worden
-    
-    IS_CLIENT = MOOI;
+    struct hostent *hostname;
+    struct in_addr **ipadres;
+    char* ip;
+
+    hostname = gethostbyname(HOSTADDR);
+    ipadres = (struct in_addr **) hostname->h_addr_list;
+    ip = inet_ntoa(*ipadres[0]);
+
+    argv[2] = ip;
+
     pfcClient(argv);
     
     return (EXIT_SUCCESS);
