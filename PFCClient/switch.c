@@ -13,14 +13,14 @@
 
 #include "pfc.h"
 
-int switchResult(int* sockfd, char* buffer){
+int switchResult(SSL* ssl, char* buffer){
     if(DEBUG >= 2){
         printf("[switchResult]: Raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
     }
     char** to = malloc(10*sizeof(int));
     int ret = 0;
     int statusCode = 0, aantal = transform(buffer, to);
-    if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
+    if(to[0] == NULL){return STUK;}
     
     if((statusCode = atoi(to[0])) < 100){
         return STUK;
@@ -35,13 +35,13 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_AUTHOK:   ret = STATUS_AUTHOK; break;
         case STATUS_AUTHFAIL: ret = STATUS_AUTHFAIL; break;
         
-        case STATUS_MKDIR:    ret = CreateFolder(sockfd, to[1]); break;
-        case STATUS_CR:       ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_MODCHK:   ret = ModifyCheckServer(sockfd, to[1], to[2]); break; //server
-        case STATUS_OLD:      ret = FileTransferSend(sockfd, to[1]); break;
-        case STATUS_NEW:      ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_CNA:      ret = ConnectRefused(sockfd); break;
-        case STATUS_SYNC:     ret = loopOverFiles(sockfd, to[1]);
+        case STATUS_MKDIR:    ret = CreateFolder(ssl, to[1]); break;
+        case STATUS_CR:       ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_MODCHK:   ret = ModifyCheckServer(ssl, to[1], to[2]); break; //server
+        case STATUS_OLD:      ret = FileTransferSend(ssl, to[1]); break;
+        case STATUS_NEW:      ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_CNA:      ret = ConnectRefused(ssl); break;
+        case STATUS_SYNC:     ret = loopOverFiles(ssl, to[1]);
         default:              ret = STUK;
     }
     
@@ -52,9 +52,9 @@ int switchResult(int* sockfd, char* buffer){
     return ret;
 }
 
-int ConnectRefused(int* sockfd){
+int ConnectRefused(SSL* ssl){
     printf("You have been disconnected\n");
-    close(*sockfd);
+    close(SSL_get_fd(ssl));
     return STUK;
 }
 

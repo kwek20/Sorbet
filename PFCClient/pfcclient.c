@@ -17,10 +17,13 @@ struct sockaddr_in serv_addr;
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
 int ConnectNaarServer(int* sockfd);
-int SendCredentials(int* sockfd);
-int ModifyCheckClient(int* sockfd, char* bestandsnaam);
-int loopOverFilesS(char **path, int* sockfd);
+int SendCredentials(SSL* ssl);
+int ModifyCheckClient(SSL* ssl, char* bestandsnaam);
+int loopOverFilesS(char **path, SSL* ssl);
 
+// SSL Prototypes
+SSL_CTX* initCTX();
+SSL* initSSL(int sockfd);
 
 struct timeval globalTv;
 time_t globalStarttime, globalEndtime, globalTime;
@@ -45,6 +48,7 @@ int main(int argc, char** argv) {
  */
 int pfcClient(char** argv){
    int sockfd;
+   SSL* ssl;
 
    if((ServerGegevens(argv[2])) < 0){
        exit(EXIT_FAILURE);
@@ -66,12 +70,55 @@ int pfcClient(char** argv){
    
    printStart();
    if(ConnectNaarServer(&sockfd) != MOOI){exit(EXIT_FAILURE);}
-   if(SendCredentials(&sockfd) != MOOI){exit(EXIT_FAILURE);}
+   ssl = initSSL(sockfd);
+   if(SendCredentials(ssl) != MOOI){exit(EXIT_FAILURE);}
    
-   exit(loopOverFilesS(argv + 1, &sockfd));
+   exit(loopOverFilesS(argv + 1, ssl));
+   
+   SSL_shutdown(ssl);
+   SSL_free(ssl);
+   close(sockfd);
 }
 
-int loopOverFilesS(char **path, int* sockfd){
+SSL* initSSL(int sockfd)
+{
+    SSL_CTX* CTX;
+    SSL* ssl;
+    
+    SSL_library_init();
+    
+    CTX = initCTX();
+    ssl = SSL_new(CTX);
+    SSL_set_fd(ssl, sockfd);
+    
+    if (SSL_connect(ssl) == STUK)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+  
+    return ssl;
+}
+
+SSL_CTX* initCTX()
+{
+    const SSL_METHOD *method;
+    SSL_CTX* CTX;
+    
+    OpenSSL_add_all_algorithms();  /* Load cryptos, et.al. */
+    SSL_load_error_strings();   /* Bring in and register error messages */
+    method = TLSv1_client_method();  /* Create new client-method instance */
+    CTX = SSL_CTX_new(method);   /* Create new context */
+    if ( CTX == NULL )
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    
+    return CTX;
+}
+
+int loopOverFilesS(char **path, SSL* ssl){
     FTS *ftsp;
     FTSENT *p, *chp;
     int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
@@ -110,7 +157,7 @@ int loopOverFilesS(char **path, int* sockfd){
                 int size = st.st_size;
                 totalSize += size;
                 printf("-- Synchronising file: [%s] | Size in Bytes: [%i]\n", p->fts_path, size);
-                if(ModifyCheckFile(sockfd, p->fts_path) < 0){
+                if(ModifyCheckFile(ssl, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed ;-(\n", p->fts_path);
                 }
                 break;
@@ -120,13 +167,13 @@ int loopOverFilesS(char **path, int* sockfd){
     }
     
     fts_close(ftsp);
-    sendPacket(*sockfd, STATUS_SYNC, path[0], NULL);
+    sendPacket(ssl, STATUS_SYNC, path[0], NULL);
     char* buffer = malloc(BUFFERSIZE);
     int ret = MOOI, readCounter = 0;
     bzero(buffer, BUFFERSIZE);
     
     for ( ;; ){
-        if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+        if((readCounter = SSL_read(ssl, buffer, BUFFERSIZE)) < 0) {
             //printf("%s(%i, %i)\n", buffer, readCounter, *sockfd);
             perror("Receive modififycheck result error");
             ret = STUK;
@@ -135,7 +182,7 @@ int loopOverFilesS(char **path, int* sockfd){
             break;
         }
         
-        readCounter = switchResult(sockfd, buffer);
+        readCounter = switchResult(ssl, buffer);
         bzero(buffer, BUFFERSIZE);
         
         if (readCounter == STUK) break;
@@ -207,7 +254,7 @@ int ConnectNaarServer(int* sockfd){
  * @param sockfd
  * @return 
  */
-int SendCredentials(int* sockfd){
+int SendCredentials(SSL* ssl){
     
      /*
      * client verstuurd verzoek om in te loggen (302:username:password)
@@ -234,13 +281,13 @@ int SendCredentials(int* sockfd){
         memset(buffer, 0 , strlen(buffer));
         
         printf("ready to send\n");
-        sendPacket(*sockfd, STATUS_AUTH, username, hex, NULL);
-        if((recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+        sendPacket(ssl, STATUS_AUTH, username, hex, NULL);
+        if((SSL_read(ssl, buffer, BUFFERSIZE)) < 0) {
             perror("Receive metadata OK error");
             return STUK;
         }
 
-        sR = switchResult(sockfd, buffer);
+        sR = switchResult(ssl, buffer);
         
         free(username); free(password), free(buffer);
         switch(sR){

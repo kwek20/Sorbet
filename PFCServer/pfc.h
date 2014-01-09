@@ -27,7 +27,10 @@
 #include <openssl/sha.h>
 #include <fts.h>
 #include <math.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
+#define CERTIFICATE "Sorbet.pem"
 
 //Server/Client Defines needed for general options
 #define BUFFERSIZE 64000
@@ -75,11 +78,11 @@ int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
 
 //Communication Client Server
-int CreateFolder(int* sockfd, char* bestandsnaam);
-int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
-int waitForOk(int sockfd);
-int ConnectRefused(int* sockfd);
+int CreateFolder(SSL* ssl, char* bestandsnaam);
+int FileTransferSend(SSL* ssl, char* bestandsnaam);
+int FileTransferReceive(SSL* ssl, char* bestandsnaam, int time);
+int waitForOk(SSL* ssl);
+int ConnectRefused(SSL* ssl);
 
 
 //String Editing
@@ -87,17 +90,17 @@ int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 char *toString(int number);
 void getEOF(char *to);
-char* fixServerBestand(int* sockfd, char* bestandsnaam);
+char* fixServerBestand(SSL* ssl, char* bestandsnaam);
 
 //Input user
 char* getInput(int max);
 char* invoerCommands(char* tekstVoor, int aantalChars);
 
 //Switch functions
-int switchResult(int* sockfd, char* buffer);
-int sendPacket(int fd, int packet, ...);
-int loopOverFiles(int* sockfd, char *path);
-int ModifyCheckFile(int* sockfd, char* bestandsnaam);
+int switchResult(SSL* ssl, char* buffer);
+int sendPacket(SSL* ssl, int packet, ...);
+int loopOverFiles(SSL* ssl, char *path);
+int ModifyCheckFile(SSL* ssl, char* bestandsnaam);
 
 //Visual presentation
 void printStart(void);
@@ -122,7 +125,7 @@ int writePasswordToLocalDB(int rc);
 sqlite3_stmt* selectQuery(char *query);
 
 //Server Only
-int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
+int ModifyCheckServer(SSL* ssl, char* bestandsnaam, char* timeleft);
 
 //Struct om username/IP van client in op te slaan
 typedef struct clientsinfo{
