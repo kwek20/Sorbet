@@ -11,6 +11,9 @@
 
 #include "pfc.h"
 #include <fts.h>
+#include <netdb.h>
+
+#define HOSTADDR "kevin.rosendaal.net"
 
 struct sockaddr_in serv_addr;
 
