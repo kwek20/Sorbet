@@ -473,7 +473,7 @@ int sendPacket(SSL* ssl, int packet, ...){
         return STUK;
     }
     if(DEBUG >= 2){
-        printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, strlen(info));
+        printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, (int)strlen(info));
     }
     free(info);
     free(p);

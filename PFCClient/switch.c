@@ -15,7 +15,7 @@
 
 int switchResult(SSL* ssl, char* buffer){
     if(DEBUG >= 2){
-        printf("[switchResult]: Raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+        printf("[switchResult]: Raw packet data: [%s], length: %i\n", buffer, (int)strlen(buffer));
     }
     char** to = malloc(10*sizeof(int));
     int ret = 0;

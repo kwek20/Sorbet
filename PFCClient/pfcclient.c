@@ -12,8 +12,12 @@
 #include "pfc.h"
 #include <fts.h>
 #include <netdb.h>
+#include <sys/inotify.h>
 
 #define HOSTADDR "kevin.rosendaal.net"
+#define MAXWATCHDIR 20 //Hoeveelheid directories die maximaal gemonitord kunnen worden
+#define EVENT_SIZE (sizeof (struct inotify_event))
+#define EVENT_BUF_LEN (1024 * ( EVENT_SIZE + 16))
 
 struct sockaddr_in serv_addr;
 
@@ -23,6 +27,7 @@ int ConnectNaarServer(int* sockfd);
 int SendCredentials(SSL* ssl);
 int ModifyCheckClient(SSL* ssl, char* bestandsnaam);
 int loopOverFilesS(char **path, SSL* ssl);
+int monitorD(char** argv);
 
 // SSL Prototypes
 SSL_CTX* initCTX();
@@ -42,10 +47,119 @@ int main(int argc, char** argv) {
 
     argv[2] = ip;
 
-    pfcClient(argv);
+    monitorD(argv);
+    //pfcClient(argv);
     
     return (EXIT_SUCCESS);
 }
+
+/**
+     * Monitord de opgegeven directory op wijzigingen zoals deleted/modify/created
+     * @param argv argumenten van commandline
+     * @return 0 if succesvol. -1 if failed.
+     */
+int monitorD(char** argv){
+    
+    
+    int fd; // FD van de watched directories
+    int wd[MAXWATCHDIR]; //Array van watch descriptors voor folder/file monitoring
+    int length, i = 0;
+    char buffer[EVENT_BUF_LEN];
+    uint32_t moveCookie;
+    
+    if((fd = inotify_init()) < 0){
+        perror( "inotify_init" );
+        return STUK;
+    }
+    
+    if((wd[0] = inotify_add_watch(fd, argv[1], IN_ALL_EVENTS)) < 0){
+        perror("wd[0] went wrong");
+    }
+    
+    for(;;){
+        i = 0;
+        bzero(buffer,EVENT_BUF_LEN);
+        
+        if((length = read(fd, buffer, EVENT_BUF_LEN)) < 0){
+            perror("read watchfd went wrong");
+            return STUK;
+        }
+        
+        
+        while(i<length){
+            struct inotify_event *event = (struct inotify_event *) &buffer[i];
+            if (event->len && strcmp(strtok(event->name,"-"),".goutputstream") != 0 && strcmp(&event->name[strlen(event->name)-1],"~") != 0){
+                if(event->mask & IN_CREATE){
+                    if(event->mask & IN_ISDIR){
+                        printf("New directory %s created.\n", event->name);
+                    }else{
+                        printf("New file %s created.\n", event->name);
+                    }                    
+                }
+                if(event->mask & IN_DELETE){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s deleted.\n", event->name);
+                    }else{
+                        printf("file %s deleted.\n", event->name);
+                    }  
+                }
+                if(event->mask & IN_MODIFY){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s modified.\n", event->name);
+                    }else{
+                        printf("file %s modified.\n", event->name);
+                    }                    
+                }
+                if(event->mask & IN_MOVED_FROM){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s moved old name.\n", event->name);
+                        printf("mask: %i\n",event->mask);
+                        printf("wd: %i\n",event->wd);
+                    }else{
+                        printf("file %s moved old name.\n", event->name);
+                    }
+                    moveCookie = event->cookie;                    
+                }
+                if(event->mask & IN_MOVE_SELF){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s MOVE SELF.\n", event->name);
+                    }else{
+                        printf("file %s MOVE SELF.\n", event->name);    
+                    }                    
+                }
+                if(event->mask & IN_MOVED_TO && moveCookie == event->cookie){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s Renamed.\n", event->name);
+                    }else{
+                        printf("file %s Renamed.\n", event->name);
+                    }
+                    bzero(&moveCookie, sizeof(uint32_t));
+                }else if(event->mask & IN_MOVED_TO){
+                    if(event->mask & IN_ISDIR){
+                        printf("directory %s Moved into folder.\n", event->name);
+                    }else{
+                        printf("file %s Moved into folder.\n", event->name);
+                    }
+                }
+            }
+            i += EVENT_SIZE + event->len;
+        }
+    }
+    
+    /*
+     * //Maak een verbinding met de server
+     * geef alle folders op voor inotify via add watch
+     * 
+     * loop
+     * zijn er nieuwe folders bijgekomen? zo ja sync deze en voeg ze toe aan de watch list
+     * monitor de fd die hieruit komt en roep pfcClient aan met de file/folder die veranderd is.
+     * ga naar loop
+     */
+    
+    
+    return MOOI;
+}
+
 
 /**
  * Hoofdprogramma voor de pfcClient
