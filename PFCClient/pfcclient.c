@@ -19,7 +19,14 @@
 #define EVENT_SIZE (sizeof (struct inotify_event))
 #define EVENT_BUF_LEN (1024 * ( EVENT_SIZE + 16))
 
+//Struct om watch directory naam en id bij te houden
+typedef struct watchDir{
+    int wd;
+    char* directoryname;
+} watchDir;
+
 struct sockaddr_in serv_addr;
+watchDir wd[MAXWATCHDIR]; //Array van watch descriptors voor folder/file monitoring
 
 int pfcClient(char** argv);
 int ServerGegevens(char* ip);
@@ -28,6 +35,9 @@ int SendCredentials(SSL* ssl);
 int ModifyCheckClient(SSL* ssl, char* bestandsnaam);
 int loopOverFilesS(char **path, SSL* ssl);
 int monitorD(char** argv);
+
+int recursiveFolderCheck(int *fd, int *lastDir, char* folder);
+int controleFolder(int *fd, int *lastDir, char *foldername);
 
 // SSL Prototypes
 SSL_CTX* initCTX();
@@ -53,34 +63,127 @@ int main(int argc, char** argv) {
     return (EXIT_SUCCESS);
 }
 
+int controleFolder(int *fd, int *lastDir, char *foldername){
+    if(*lastDir < MAXWATCHDIR){
+        if(strcmp(&foldername[strlen(foldername)-1],"/") == 0){
+            wd[*lastDir].directoryname = malloc(strlen(foldername+1));
+            strcpy(wd[*lastDir].directoryname,foldername);
+        }else{
+            wd[*lastDir].directoryname = malloc(strlen(foldername)+2);
+            strcpy(wd[*lastDir].directoryname,foldername);
+            strcat(wd[*lastDir].directoryname,"/");
+        }
+
+        if((wd[*lastDir].wd = inotify_add_watch(*fd, wd[*lastDir].directoryname, IN_ALL_EVENTS)) < 0){
+            perror("controleFolder: wd[lastDir] went wrong");
+            return STUK;
+        }
+        
+        printf("wd[%i] Directoryname: %s\n", *lastDir, wd[*lastDir].directoryname);
+        *lastDir = *lastDir + 1;
+        printf("lastDir %i\n",*lastDir);
+        
+    }
+    return MOOI;
+}
+
+int recursiveFolderCheck(int *fd, int *lastDir, char* folder){
+    
+    FTS *ftsp;
+    FTSENT *p, *chp;
+    
+    char **dir = malloc(strlen(folder)+1);
+    bzero(dir, strlen(folder)+1);
+    dir[0] = folder;
+    
+    int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
+    puts("voor open");
+    if ((ftsp = fts_open((char * const *) dir, fts_options, 0)) == NULL) {
+         perror("fts_open");
+         return STUK;
+    }
+    puts("na open");
+    /* Initialize ftsp with as many argv[] parts as possible. */
+    chp = fts_children(ftsp, 0);
+    if (chp == NULL) {
+           return STUK;               /* no files to traverse */
+    }
+    puts("na chp");
+    while ((p = fts_read(ftsp)) != NULL) {
+        if(p->fts_info == FTS_D && strcmp(p->fts_name,"") != 0){
+            printf("fts_path: %s\n",p->fts_path);
+            printf("lastDir before: %i\n",*lastDir);
+            wd[*lastDir].directoryname = malloc(strlen(p->fts_path)+2);
+            strcpy(wd[*lastDir].directoryname,p->fts_path);
+            strcat(wd[*lastDir].directoryname,"/");
+            
+            if((wd[*lastDir].wd = inotify_add_watch(*fd, wd[*lastDir].directoryname, IN_ALL_EVENTS)) < 0){
+                perror("controleFolder: wd[lastDir] went wrong");
+                return STUK;
+            }
+            *lastDir = *lastDir + 1;
+            printf("lastDir after: %i\n",*lastDir);
+        }
+        
+    }
+//    
+//    if(folder){
+//        free(folder);
+//        folder = NULL;
+//    }
+
+    fts_close(ftsp);
+    
+    return MOOI;
+}
+
 /**
      * Monitord de opgegeven directory op wijzigingen zoals deleted/modify/created
      * @param argv argumenten van commandline
      * @return 0 if succesvol. -1 if failed.
      */
 int monitorD(char** argv){
-    
-    
-    int fd; // FD van de watched directories
-    int wd[MAXWATCHDIR]; //Array van watch descriptors voor folder/file monitoring
-    int length, i = 0;
-    char buffer[EVENT_BUF_LEN];
+        
+    int *fd = malloc(sizeof(int)); // FD van de watched directories
+    int length, i = 0, *lastDir = malloc(sizeof(int)), tempCheck = 0;
+    char buffer[EVENT_BUF_LEN], tempFolder[1024];
     uint32_t moveCookie;
     
-    if((fd = inotify_init()) < 0){
+    bzero(lastDir,sizeof(int));
+    bzero(fd,sizeof(int));
+    
+    if((*fd = inotify_init()) < 0){
         perror( "inotify_init" );
         return STUK;
     }
     
-    if((wd[0] = inotify_add_watch(fd, argv[1], IN_ALL_EVENTS)) < 0){
-        perror("wd[0] went wrong");
+    if((tempCheck = controleFolder(fd, lastDir, argv[1])) < 0){
+        printf("Folder Check went wrong in %s | lastDir %i\n", wd[*lastDir].directoryname, *lastDir);
+        tempCheck = 0;
+    }else{
+        tempCheck = 0;
+    }
+    
+    puts("before recursiveFolder");
+    printf("wd[%i].directoryname: %s\n",*lastDir, wd[*lastDir-1].directoryname);
+    puts("na print");
+    if((tempCheck = recursiveFolderCheck(fd, lastDir, wd[*lastDir-1].directoryname)) < 0){
+        tempCheck = 0;
+    }else{
+        tempCheck = 0;
+    }
+    
+    printf("lastDir %i\n",*lastDir);
+    
+    for(i = 0; i < *lastDir; i++){
+        printf("wd[%i].directoryname: %s\n",i,wd[i].directoryname);
     }
     
     for(;;){
         i = 0;
         bzero(buffer,EVENT_BUF_LEN);
         
-        if((length = read(fd, buffer, EVENT_BUF_LEN)) < 0){
+        if((length = read(*fd, buffer, EVENT_BUF_LEN)) < 0){
             perror("read watchfd went wrong");
             return STUK;
         }
@@ -91,16 +194,21 @@ int monitorD(char** argv){
             if (event->len && strcmp(strtok(event->name,"-"),".goutputstream") != 0 && strcmp(&event->name[strlen(event->name)-1],"~") != 0){
                 if(event->mask & IN_CREATE){
                     if(event->mask & IN_ISDIR){
-                        printf("New directory %s created.\n", event->name);
+                        printf("New directory %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
+                        
+                        strcpy(tempFolder, wd[(event->wd)-1].directoryname);
+                        strcat(tempFolder, event->name);
+                        controleFolder(fd, lastDir, tempFolder);
+                        printf("folder %s created | lastDir %i\n", wd[*lastDir-1].directoryname, *lastDir);
                     }else{
-                        printf("New file %s created.\n", event->name);
+                        printf("New file %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
                     }                    
                 }
                 if(event->mask & IN_DELETE){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s deleted.\n", event->name);
+                        printf("directory %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
                     }else{
-                        printf("file %s deleted.\n", event->name);
+                        printf("file %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
                     }  
                 }
                 if(event->mask & IN_MODIFY){
@@ -113,8 +221,6 @@ int monitorD(char** argv){
                 if(event->mask & IN_MOVED_FROM){
                     if(event->mask & IN_ISDIR){
                         printf("directory %s moved old name.\n", event->name);
-                        printf("mask: %i\n",event->mask);
-                        printf("wd: %i\n",event->wd);
                     }else{
                         printf("file %s moved old name.\n", event->name);
                     }
