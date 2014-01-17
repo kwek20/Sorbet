@@ -38,6 +38,7 @@ int monitorD(char** argv);
 
 int recursiveFolderCheck(int *fd, int *lastDir, char* folder);
 int controleFolder(int *fd, int *lastDir, char *foldername);
+int getWD(int wdesc, int lastDir, char childFolder[]);
 
 // SSL Prototypes
 SSL_CTX* initCTX();
@@ -79,9 +80,9 @@ int controleFolder(int *fd, int *lastDir, char *foldername){
             return STUK;
         }
         
-        printf("wd[%i] Directoryname: %s\n", *lastDir, wd[*lastDir].directoryname);
+        if(DEBUG >= 1)printf("wd[%i] Directoryname: %s\n", *lastDir, wd[*lastDir].directoryname);
         *lastDir = *lastDir + 1;
-        printf("lastDir %i\n",*lastDir);
+        if(DEBUG >= 1)printf("lastDir %i\n",*lastDir);
         
     }
     return MOOI;
@@ -97,22 +98,18 @@ int recursiveFolderCheck(int *fd, int *lastDir, char* folder){
     dir[0] = folder;
     
     int fts_options = FTS_COMFOLLOW | FTS_LOGICAL | FTS_NOCHDIR;
-    puts("voor open");
     if ((ftsp = fts_open((char * const *) dir, fts_options, 0)) == NULL) {
          perror("fts_open");
          return STUK;
     }
-    puts("na open");
     /* Initialize ftsp with as many argv[] parts as possible. */
     chp = fts_children(ftsp, 0);
     if (chp == NULL) {
            return STUK;               /* no files to traverse */
     }
-    puts("na chp");
     while ((p = fts_read(ftsp)) != NULL) {
         if(p->fts_info == FTS_D && strcmp(p->fts_name,"") != 0){
-            printf("fts_path: %s\n",p->fts_path);
-            printf("lastDir before: %i\n",*lastDir);
+//            printf("fts_path: %s\n",p->fts_path);
             wd[*lastDir].directoryname = malloc(strlen(p->fts_path)+2);
             strcpy(wd[*lastDir].directoryname,p->fts_path);
             strcat(wd[*lastDir].directoryname,"/");
@@ -122,7 +119,6 @@ int recursiveFolderCheck(int *fd, int *lastDir, char* folder){
                 return STUK;
             }
             *lastDir = *lastDir + 1;
-            printf("lastDir after: %i\n",*lastDir);
         }
         
     }
@@ -138,6 +134,34 @@ int recursiveFolderCheck(int *fd, int *lastDir, char* folder){
 }
 
 /**
+ * Get WDesc of child folder based on pathname
+ * @param wdesc descripter of parent folder
+ * @param lastDir lastDir defined in array
+ * @param childFolder folder name that is inside the parent
+ * @return wdesc of child in array. or stuk if broken.
+ */
+int getWD(int wdesc, int lastDir, char childFolder[]){
+    
+    int i = 0;
+    char *pathName;
+    
+    pathName = malloc(strlen(wd[wdesc].directoryname) + strlen(childFolder) + 2);
+    strcpy(pathName, wd[wdesc].directoryname);
+    strcat(pathName,childFolder);
+    strcat(pathName,"/");
+    if(DEBUG >= 1)printf("pathName: %s\n",pathName);
+    for(i = 0;i < lastDir; i++){
+        if(strcmp(wd[i].directoryname, pathName) == 0){
+            free(pathName);
+            return i;
+        }
+    }
+    
+    free(pathName);
+    return STUK;
+}
+
+/**
      * Monitord de opgegeven directory op wijzigingen zoals deleted/modify/created
      * @param argv argumenten van commandline
      * @return 0 if succesvol. -1 if failed.
@@ -145,7 +169,7 @@ int recursiveFolderCheck(int *fd, int *lastDir, char* folder){
 int monitorD(char** argv){
         
     int *fd = malloc(sizeof(int)); // FD van de watched directories
-    int length, i = 0, *lastDir = malloc(sizeof(int)), tempCheck = 0;
+    int length, i = 0, *lastDir = malloc(sizeof(int)), tempCheck = 0, tempWDesc = 0;
     char buffer[EVENT_BUF_LEN], tempFolder[1024];
     uint32_t moveCookie;
     
@@ -158,27 +182,24 @@ int monitorD(char** argv){
     }
     
     if((tempCheck = controleFolder(fd, lastDir, argv[1])) < 0){
-        printf("Folder Check went wrong in %s | lastDir %i\n", wd[*lastDir].directoryname, *lastDir);
+        if(DEBUG >= 1)printf("Folder Check went wrong in %s | lastDir %i\n", wd[*lastDir].directoryname, *lastDir);
         tempCheck = 0;
     }else{
         tempCheck = 0;
     }
     
-    puts("before recursiveFolder");
-    printf("wd[%i].directoryname: %s\n",*lastDir, wd[*lastDir-1].directoryname);
-    puts("na print");
+    if(DEBUG >= 1)printf("wd[%i].directoryname: %s\n",*lastDir, wd[*lastDir-1].directoryname);
     if((tempCheck = recursiveFolderCheck(fd, lastDir, wd[*lastDir-1].directoryname)) < 0){
         tempCheck = 0;
     }else{
         tempCheck = 0;
     }
     
-    printf("lastDir %i\n",*lastDir);
-    
-    for(i = 0; i < *lastDir; i++){
-        printf("wd[%i].directoryname: %s\n",i,wd[i].directoryname);
+    if(DEBUG >= 1){
+        for(i = 0; i < *lastDir; i++){
+            printf("wd[%i].directoryname: %s\n",i,wd[i].directoryname);
+        }
     }
-    
     for(;;){
         i = 0;
         bzero(buffer,EVENT_BUF_LEN);
@@ -194,57 +215,70 @@ int monitorD(char** argv){
             if (event->len && strcmp(strtok(event->name,"-"),".goutputstream") != 0 && strcmp(&event->name[strlen(event->name)-1],"~") != 0){
                 if(event->mask & IN_CREATE){
                     if(event->mask & IN_ISDIR){
-                        printf("New directory %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
+                        if(DEBUG >= 1)printf("New directory %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
                         
                         strcpy(tempFolder, wd[(event->wd)-1].directoryname);
                         strcat(tempFolder, event->name);
                         controleFolder(fd, lastDir, tempFolder);
-                        printf("folder %s created | lastDir %i\n", wd[*lastDir-1].directoryname, *lastDir);
+                        if(DEBUG >= 1)printf("folder %s created | lastDir %i\n", wd[*lastDir-1].directoryname, *lastDir);
                     }else{
-                        printf("New file %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
+                        if(DEBUG >= 1)printf("New file %s%s created.\n", wd[(event->wd)-1].directoryname, event->name);
                     }                    
                 }
                 if(event->mask & IN_DELETE){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
+                        if(DEBUG >= 1)printf("directory %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
                     }else{
-                        printf("file %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
+                        if(DEBUG >= 1)printf("file %s%s deleted.\n", wd[(event->wd)-1].directoryname, event->name);
                     }  
                 }
                 if(event->mask & IN_MODIFY){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s modified.\n", event->name);
+                        if(DEBUG >= 1)printf("directory %s modified.\n", event->name);
                     }else{
-                        printf("file %s modified.\n", event->name);
+                        if(DEBUG >= 1)printf("file %s modified.\n", event->name);
                     }                    
                 }
                 if(event->mask & IN_MOVED_FROM){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s moved old name.\n", event->name);
+                        if(DEBUG >= 1)printf("directory %s moved old name.\n", event->name);
+                        if((tempWDesc = getWD((event->wd-1), *lastDir, event->name)) < 0){
+                                printf("getWD went wrong tempWDesc %i\n",tempWDesc);
+                        }
                     }else{
-                        printf("file %s moved old name.\n", event->name);
+                        if(DEBUG >= 1)printf("file %s moved old name.\n", event->name);
                     }
                     moveCookie = event->cookie;                    
                 }
                 if(event->mask & IN_MOVE_SELF){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s MOVE SELF.\n", event->name);
+                        if(DEBUG >= 1)printf("directory %s MOVE SELF.\n", event->name);
                     }else{
-                        printf("file %s MOVE SELF.\n", event->name);    
+                        if(DEBUG >= 1)printf("file %s MOVE SELF.\n", event->name);    
                     }                    
                 }
                 if(event->mask & IN_MOVED_TO && moveCookie == event->cookie){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s Renamed.\n", event->name);
+                        if(DEBUG >= 1)printf("directory %s Renamed.\n", event->name);
+                        
+                        //verwijderen
+                        inotify_rm_watch(*fd, tempWDesc);
+                        strcpy(tempFolder, wd[(event->wd)-1].directoryname);
+                        strcat(tempFolder, event->name);
+                        controleFolder(fd, &tempWDesc, tempFolder);
+                        if(DEBUG >= 1)printf("directory %s Renamed path & wd %i wdtemp %i\n",wd[tempWDesc-1].directoryname,wd[tempWDesc-1].wd, tempWDesc);
                     }else{
-                        printf("file %s Renamed.\n", event->name);
+                        if(DEBUG >= 1)printf("file %s Renamed.\n", event->name);
                     }
                     bzero(&moveCookie, sizeof(uint32_t));
                 }else if(event->mask & IN_MOVED_TO){
                     if(event->mask & IN_ISDIR){
-                        printf("directory %s Moved into folder.\n", event->name);
+                        if(DEBUG >= 1)printf("directory %s Moved into folder.\n", event->name);
+                        strcpy(tempFolder, wd[(event->wd)-1].directoryname);
+                        strcat(tempFolder, event->name);
+                        controleFolder(fd, lastDir, tempFolder);
                     }else{
-                        printf("file %s Moved into folder.\n", event->name);
+                        if(DEBUG >= 1)printf("file %s Moved into folder.\n", event->name);
                     }
                 }
             }
