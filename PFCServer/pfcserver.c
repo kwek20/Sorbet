@@ -82,12 +82,10 @@ int main(int argc, char** argv) {
     initSSL();
 
     //create semaphore
-    if (sem_init(&client_wait, 0, 0) < 0){
+    if (sem_init(&client_wait, 0, MAX_CLI) < 0){
         perror("semaphore");
         return -1;
     }
-    //set it open
-    sem_post(&client_wait);
     
     //make server data
     struct sockaddr_in server_addr = getServerAddr(poort);
@@ -126,23 +124,18 @@ int main(int argc, char** argv) {
     pthread_create(&cmd, NULL, (void*)command, NULL);
     
     printf("Private file cloud server ready!\nWe're listening for clients on port \"%i\".\n", NETWERKPOORT);
-    for ( ;; ){
+    cur_cli = MAX_CLI;
+    for (;;){
         //wait for free sem
         sem_wait(&client_wait);
         
-        //extra check, just in case
-        if(cur_cli < MAX_CLI){
-            //create new thread for a new connection
-            pthread_t client;
-            pthread_create(&client, NULL, (void*)create, &sock);
-            pthread_detach(client);
-            cur_cli++;
-            
-            //can we still make clients? clear the sem again if possible
-            if (cur_cli < MAX_CLI){
-                sem_post(&client_wait);
-            }
-        }
+        //create new thread for a new connection
+        pthread_t client;
+        pthread_create(&client, NULL, (void*)create, &sock);
+        pthread_detach(client);
+//        cur_cli++;
+//        sem_post(&client_wait);
+//           
     }
     
     return (EXIT_SUCCESS);
@@ -222,7 +215,7 @@ void create(int *sock){
     //init vars
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERCMD];
     SSL* ssl;
     
     //open sem for new thread
@@ -253,15 +246,15 @@ void create(int *sock){
     
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
-        bzero(buffer, BUFFERSIZE);
+        bzero(buffer, BUFFERCMD);
         int bytes = 0;
-        if((bytes = SSL_read(ssl, buffer, BUFFERSIZE)) <= 0){
+        if((bytes = SSL_read(ssl, buffer, BUFFERCMD)) <= 0){
             perror("recv error");
             stopClient(ssl);
             return;
         }
-        char** to = malloc(BUFFERSIZE + 100);
-        bzero(to, BUFFERSIZE + 100);
+        char** to = malloc(BUFFERCMD + 100);
+        bzero(to, BUFFERCMD + 100);
         transform(buffer, to);
         if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
             sendPacket(ssl, STATUS_AUTHOK, NULL);
@@ -292,14 +285,14 @@ void create(int *sock){
         }
     }
     
-    bzero(buffer, BUFFERSIZE);
+    bzero(buffer, BUFFERCMD);
     
     //End of Login
     printf("user %s has logged in, awaiting orders.\n", clients[fd-4].username);
     //loop forever until client stops
     for ( ;; ){
         //receive info
-        if ((rec = SSL_read(ssl, buffer, BUFFERSIZE)) < 0){
+        if ((rec = SSL_read(ssl, buffer, BUFFERCMD)) < 0){
             perror("recv");
             printf("Client error! Stopping... \n");
             break;
@@ -314,7 +307,7 @@ void create(int *sock){
                 break;
             }
         }
-        bzero(buffer, BUFFERSIZE);
+        bzero(buffer, BUFFERCMD);
     }
     stopClient(ssl);
 }
@@ -350,7 +343,7 @@ void stopClient(SSL* ssl){
     bzero(&clients[fd-4], sizeof(clients[fd-4]));
     SSL_shutdown(ssl);
     close(fd);
-    cur_cli--;
+    sem_post(&client_wait);
 }
 
 /**

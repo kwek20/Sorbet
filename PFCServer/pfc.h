@@ -34,8 +34,9 @@
 
 //Server/Client Defines needed for general options
 #define BUFFERSIZE 64000
+#define BUFFERCMD 1024
 #define NETWERKPOORT 2200
-#define MAX_CLI 10
+#define MAX_CLI 100
 //Debug mode 0 off, 1 speedtest, 2 error debug
 #define DEBUG 0
 //Defines return values
@@ -56,6 +57,8 @@
 #define STATUS_AUTH 302 //Client stuurt credentials naar server.
 #define STATUS_MKDIR 303 //aanvraag voor een create directory
 #define STATUS_SYNC 304 //geeft aan dat hij klaar is voor synchronisatie van de ander
+#define STATUS_DELETE 305 //Geeft aan dat client een bestand op de server wilt verwijderen
+#define STATUS_RENAME 306 //Geeft aan dat de client een bestand of folder wilt hernoemen
 
 // 4xx Server naar client requests
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
@@ -76,6 +79,9 @@ int BestaatDeFile(char* fileName);
 int OpenBestand(char* bestandsnaam);
 int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
+
+int deleteFile(SSL* ssl, char *bestandsnaam, char* fileOrDir);
+int renameFile(SSL* ssl, char* oldName, char* newName);
 
 //Communication Client Server
 int CreateFolder(SSL* ssl, char* bestandsnaam);

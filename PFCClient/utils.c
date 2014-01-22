@@ -28,6 +28,30 @@ int OpenBestand(char* bestandsnaam){
     return MOOI;
 }
 
+int deleteFile(SSL* ssl, char* bestandsnaam, char* fileOrDir){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
+    char fullPath[500];
+    if(getcwd(fullPath, sizeof(fullPath)) == NULL){
+        perror("Getcwd error");
+        return STUK;
+    }
+    strcat(fullPath, "/");
+    strcat(fullPath, savedir);
+    
+    printf("Pad is nu: %s \n", fullPath);
+    
+    if(strcmp(fileOrDir, "1") == 0){
+        // Het is een dir!
+        puts("Directory");
+        if(rmdir(fullPath) < 0){perror("Remove file error"); return STUK;}
+    } else if(strcmp(fileOrDir, "2") == 0){
+        // Het is een file!
+        puts("File");
+        if(unlink(fullPath) < 0){perror("Remove file error"); return STUK;}
+    }
+    return MOOI;
+}
+
 /*
  * Functie controleerd of bestand bestaat
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
@@ -38,7 +62,7 @@ int BestaatDeFile(char* bestandsnaam){
         // Bestand bestaat niet op schijf van client
         return STUK;
     } else {
-        // Bestand bestaat op schijf van client
+        // Bestand bestaat op schijf van cliteamsorbet-pfc-4c104671e945ent
         return MOOI;
     }
 }

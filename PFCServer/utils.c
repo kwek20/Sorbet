@@ -28,6 +28,54 @@ int OpenBestand(char* bestandsnaam){
     return MOOI;
 }
 
+// Delete een remote file
+int deleteFile(SSL* ssl, char* bestandsnaam, char* fileOrDir){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
+    char fullPath[500];
+    if(getcwd(fullPath, sizeof(fullPath)) == NULL){
+        perror("Getcwd error");
+        return STUK;
+    }
+    strcat(fullPath, "/");
+    strcat(fullPath, savedir);
+    
+    if(strcmp(fileOrDir, "1") == 0){
+        // Het is een dir!
+        if(rmdir(fullPath) < 0){perror("Remove file error"); return STUK;}
+    } else if(strcmp(fileOrDir, "2") == 0){
+        // Het is een file!
+        if(unlink(fullPath) < 0){perror("Remove file error"); return STUK;}
+    }
+    return MOOI;
+}
+
+// Hernoem een remote file
+int renameFile(SSL* ssl, char* oldName, char* newName){
+    char* savedirOld = fixServerBestand(ssl, oldName);
+    char* savedirNew = fixServerBestand(ssl, newName);
+    char fullPathOld[500];
+    char fullPathNew[500];
+    
+    if(getcwd(fullPathOld, sizeof(fullPathOld)) == NULL){ perror("Getcwd error"); return STUK; }
+    if(getcwd(fullPathNew, sizeof(fullPathNew)) == NULL){ perror("Getcwd error"); return STUK; }
+        
+    strcat(fullPathOld, "/"); 
+    strcat(fullPathNew, "/");
+    
+    strcat(fullPathOld, savedirOld); 
+    strcat(fullPathNew, savedirNew);
+    
+    printf("Oude naam %s\n", fullPathOld);
+    printf("nieuwe naam %s\n", fullPathNew);
+    
+    //sleep(10);
+    
+    if(rename(fullPathOld, fullPathNew) < 0){ perror("Rename error"); return STUK; }
+    
+    return MOOI;
+}
+
+
 /*
  * Functie controleerd of bestand bestaat
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
@@ -38,7 +86,7 @@ int BestaatDeFile(char* bestandsnaam){
         // Bestand bestaat niet op schijf van client
         return STUK;
     } else {
-        // Bestand bestaat op schijf van client
+        // Bestand bestaat op schijf van cliteamsorbet-pfc-4c104671e945ent
         return MOOI;
     }
 }
@@ -384,8 +432,8 @@ int CreateFolder(SSL* ssl, char* bestandsnaam){
     bzero(path, strlen(savedir) + 100);
     int i, amount = transformWith(savedir, path, "/");
     if (amount > 0){
-        char folderpath[BUFFERSIZE];
-        bzero(folderpath, BUFFERSIZE);
+        char folderpath[BUFFERCMD];
+        bzero(folderpath, BUFFERCMD);
             
         strcpy(folderpath, "");
 
@@ -433,11 +481,11 @@ char* fixServerBestand(SSL* ssl, char* bestandsnaam){
 }
 
 int sendPacket(SSL* ssl, int packet, ...){
-    char *info = malloc(BUFFERSIZE);
-    bzero(info, BUFFERSIZE);
+    char *info = malloc(BUFFERCMD);
+    bzero(info, BUFFERCMD);
     strcpy(info, "");
-    char *p = malloc(BUFFERSIZE);
-    bzero(p, BUFFERSIZE);
+    char *p = malloc(BUFFERCMD);
+    bzero(p, BUFFERCMD);
     
     sprintf(p, "%i", packet);   
     
@@ -459,7 +507,7 @@ int sendPacket(SSL* ssl, int packet, ...){
         sprintf(p, "%s", i);
         strcat(info, p);
         strcat(info, ":");
-        bzero(p, BUFFERSIZE);
+        bzero(p, strlen(p));
 
     }
     va_end(ap);

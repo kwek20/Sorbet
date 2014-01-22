@@ -41,7 +41,8 @@ int switchResult(SSL* ssl, char* buffer){
         case STATUS_OLD:      ret = FileTransferSend(ssl, to[1]); break;
         case STATUS_NEW:      ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
         case STATUS_CNA:      ret = ConnectRefused(ssl); break;
-        case STATUS_SYNC:     ret = loopOverFiles(ssl, to[1]);
+        case STATUS_DELETE:   ret = deleteFile(ssl, to[1], to[2]); break;
+        case STATUS_SYNC:     ret = loopOverFiles(ssl, to[1]);     
         default:              ret = STUK;
     }
     
