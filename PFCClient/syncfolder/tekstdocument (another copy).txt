@@ -1,0 +1,1 @@
+Dit gaan we synchroniseren met de server en client

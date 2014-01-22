@@ -25,15 +25,20 @@
 #include <stdarg.h>
 #include <sqlite3.h>
 #include <openssl/sha.h>
-#include <openssl/aes.h>
-#include <openssl/evp.h>
 #include <fts.h>
+#include <math.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
+#define CERTIFICATE "Sorbet.pem"
 
 //Server/Client Defines needed for general options
-#define BUFFERSIZE 65535
+#define BUFFERSIZE 64000
+#define BUFFERCMD 1024
 #define NETWERKPOORT 2200
-#define MAX_CLI 10
+#define MAX_CLI 100
+//Debug mode 0 off, 1 speedtest, 2 error debug
+#define DEBUG 0
 //Defines return values
 #define STUK -1
 #define MOOI 0
@@ -52,6 +57,8 @@
 #define STATUS_AUTH 302 //Client stuurt credentials naar server.
 #define STATUS_MKDIR 303 //aanvraag voor een create directory
 #define STATUS_SYNC 304 //geeft aan dat hij klaar is voor synchronisatie van de ander
+#define STATUS_DELETE 305 //Geeft aan dat client een bestand op de server wilt verwijderen
+#define STATUS_RENAME 306 //Geeft aan dat de client een bestand of folder wilt hernoemen
 
 // 4xx Server naar client requests
 #define STATUS_OLD 401 //Server geeft aan dat file op server ouder is.
@@ -67,23 +74,21 @@
 //De client vult hier true in. De server false. Dit is nodig voor sommige functies
 int IS_CLIENT;
 
-//file encrypt
-int aes_init(unsigned char *key_data, int key_data_len, unsigned char *salt);
- char *aes_encrypt(unsigned char *plaintext, int *len);
- char *aes_decrypt(unsigned char *ciphertext, int *len);
-
 //File Functions
 int BestaatDeFile(char* fileName);
 int OpenBestand(char* bestandsnaam);
 int changeModTime(char *bestandsnaam, int time);
 int modifiedTime(char *bestandsnaam);
 
+int deleteFile(SSL* ssl, char *bestandsnaam, char* fileOrDir);
+int renameFile(SSL* ssl, char* oldName, char* newName);
+
 //Communication Client Server
-int CreateFolder(int* sockfd, char* bestandsnaam);
-int FileTransferSend(int* sockfd, char* bestandsnaam);
-int FileTransferReceive(int* sockfd, char* bestandsnaam, int time);
-int waitForOk(int sockfd);
-int ConnectRefused(int* sockfd);
+int CreateFolder(SSL* ssl, char* bestandsnaam);
+int FileTransferSend(SSL* ssl, char* bestandsnaam);
+int FileTransferReceive(SSL* ssl, char* bestandsnaam, int time);
+int waitForOk(SSL* ssl);
+int ConnectRefused(SSL* ssl);
 
 
 //String Editing
@@ -91,17 +96,17 @@ int transform(char *text, char** to);
 int transformWith(char *text, char** to, char *delimit);
 char *toString(int number);
 void getEOF(char *to);
-char* fixServerBestand(int* sockfd, char* bestandsnaam);
+char* fixServerBestand(SSL* ssl, char* bestandsnaam);
 
 //Input user
 char* getInput(int max);
 char* invoerCommands(char* tekstVoor, int aantalChars);
 
 //Switch functions
-int switchResult(int* sockfd, char* buffer);
-int sendPacket(int fd, int packet, ...);
-int loopOverFiles(int* sockfd, char *path);
-int ModifyCheckFile(int* sockfd, char* bestandsnaam);
+int switchResult(SSL* ssl, char* buffer);
+int sendPacket(SSL* ssl, int packet, ...);
+int loopOverFiles(SSL* ssl, char *path);
+int ModifyCheckFile(SSL* ssl, char* bestandsnaam);
 
 //Visual presentation
 void printStart(void);
@@ -126,7 +131,7 @@ int writePasswordToLocalDB(int rc);
 sqlite3_stmt* selectQuery(char *query);
 
 //Server Only
-int ModifyCheckServer(int* sockfd, char* bestandsnaam, char* timeleft);
+int ModifyCheckServer(SSL* ssl, char* bestandsnaam, char* timeleft);
 
 //Struct om username/IP van client in op te slaan
 typedef struct clientsinfo{
@@ -134,4 +139,4 @@ typedef struct clientsinfo{
     char* username;
 } clientsinfo;
 
-clientsinfo clients[MAX_CLI];
+clientsinfo *clients;

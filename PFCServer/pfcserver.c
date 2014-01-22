@@ -12,6 +12,9 @@
 #include <stdarg.h>
 #include <semaphore.h>
 
+ // SSL Global
+SSL_CTX *CTX;
+
 //Server Only
 char* getPassWord(char *name);
 int checkCredentials();
@@ -21,7 +24,7 @@ void setupSIG();
 void SIGexit(int sig);
 
 void quit();
-void stopClient(int fd);
+void stopClient(SSL* ssl);
 
 void create(int *sock);
 struct sockaddr_in getServerAddr(int poort);
@@ -36,6 +39,12 @@ int printTable(char **args, int amount);
 int printClientInfo(struct clientsinfo client, int number);
 
 int ReceiveCredentials(char* username, char* password);
+
+// SSL Prototypes:
+void LoadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile);
+SSL_CTX* initserverctx();
+int initSSL();
+SSL* sslConnection(int fd);
 
 const static struct {
     const char *name;
@@ -69,17 +78,18 @@ int main(int argc, char** argv) {
 
     setupSIG();
 
+    //ssl init
+    initSSL();
+
     //create semaphore
-    if (sem_init(&client_wait, 0, 0) < 0){
+    if (sem_init(&client_wait, 0, MAX_CLI) < 0){
         perror("semaphore");
         return -1;
     }
-    //set it open
-    sem_post(&client_wait);
     
     //make server data
     struct sockaddr_in server_addr = getServerAddr(poort);
-    //clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
+    clients = (struct clientsinfo*) malloc(MAX_CLI*sizeof(struct clientsinfo));
     
     //make a socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -114,26 +124,86 @@ int main(int argc, char** argv) {
     pthread_create(&cmd, NULL, (void*)command, NULL);
     
     printf("Private file cloud server ready!\nWe're listening for clients on port \"%i\".\n", NETWERKPOORT);
-    for ( ;; ){
+    cur_cli = MAX_CLI;
+    for (;;){
         //wait for free sem
         sem_wait(&client_wait);
         
-        //extra check, just in case
-        if(cur_cli < MAX_CLI){
-            //create new thread for a new connection
-            pthread_t client;
-            pthread_create(&client, NULL, (void*)create, &sock);
-            pthread_detach(client);
-            cur_cli++;
-            
-            //can we still make clients? clear the sem again if possible
-            if (cur_cli < MAX_CLI){
-                sem_post(&client_wait);
-            }
-        }
+        //create new thread for a new connection
+        pthread_t client;
+        pthread_create(&client, NULL, (void*)create, &sock);
+        pthread_detach(client);
+//        cur_cli++;
+//        sem_post(&client_wait);
+//           
     }
     
     return (EXIT_SUCCESS);
+}
+
+int initSSL()
+{
+    SSL_library_init();
+    CTX = initserverctx();
+    
+    LoadCertificates(CTX, CERTIFICATE, CERTIFICATE);
+    
+    return MOOI;
+}
+
+SSL_CTX* initserverctx()
+{
+    const SSL_METHOD *method;
+    SSL_CTX *CTX;
+    
+    OpenSSL_add_all_algorithms();
+    SSL_load_error_strings();
+    method = TLSv1_server_method();
+    CTX = SSL_CTX_new(method);
+    
+    if (CTX == NULL)
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    return CTX;
+}
+
+void LoadCertificates(SSL_CTX* ctx, char* CertFile, char* KeyFile)
+{
+ /* set the local certificate from CertFile */
+    if ( SSL_CTX_use_certificate_file(ctx, CertFile, SSL_FILETYPE_PEM) <= 0 )
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    /* set the private key from KeyFile (may be the same as CertFile) */
+    if ( SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0 )
+    {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    /* verify private key */
+    if ( !SSL_CTX_check_private_key(ctx) )
+    {
+        fprintf(stderr, "Private key does not match the public certificate\n");
+        abort();
+    }
+}
+
+SSL* sslConnection(int fd)
+{
+    SSL *ssl;
+    ssl = SSL_new(CTX);
+    SSL_set_fd(ssl, fd);
+    
+    if (SSL_accept(ssl) == STUK) 
+    {
+        ERR_print_errors_fp(stderr);
+    }
+    
+    return ssl;
 }
 
 /**
@@ -145,7 +215,8 @@ void create(int *sock){
     //init vars
     int result = 0, fd, rec, i, temp = 0;
     struct sockaddr_in client_addr;
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERCMD];
+    SSL* ssl;
     
     //open sem for new thread
     sem_post(&client_wait);
@@ -155,6 +226,9 @@ void create(int *sock){
     if ((fd = accept(*sock, (struct sockaddr *)&client_addr, &size)) < 0){
          perror("accept");
     }
+
+    // SSL connection
+    ssl = sslConnection(fd);
 
     //data for later usage
     char *ip;
@@ -172,21 +246,20 @@ void create(int *sock){
     
     //Login moet nog naar een functie
     for (i = 0; i < LOGINATTEMPTS; i++){
-        bzero(buffer, BUFFERSIZE);
+        bzero(buffer, BUFFERCMD);
         int bytes = 0;
-        if((bytes = recv(fd, buffer, BUFFERSIZE, 0)) <= 0){
+        if((bytes = SSL_read(ssl, buffer, BUFFERCMD)) <= 0){
             perror("recv error");
-            stopClient(fd);
+            stopClient(ssl);
             return;
         }
-        char** to = malloc(BUFFERSIZE + 100);
-        bzero(to, BUFFERSIZE + 100);
-        int amount = transform(buffer, to);
-        
-        if(amount == 3 && (temp = ReceiveCredentials(to[1], to[2])) == MOOI){
-            sendPacket(fd, STATUS_AUTHOK, NULL);
+        char** to = malloc(BUFFERCMD + 100);
+        bzero(to, BUFFERCMD + 100);
+        transform(buffer, to);
+        if((temp = ReceiveCredentials(to[1], to[2])) == MOOI){
+            sendPacket(ssl, STATUS_AUTHOK, NULL);
             //add username
-            clients[fd-4].username = malloc(strlen(to[1])+1);
+            clients[fd-4].username = malloc(strlen(to[1]));
             strcpy(clients[fd-4].username, to[1]);
             
             char *folder = malloc(sizeof(to[1]) + strlen("userfolders/"));
@@ -203,23 +276,23 @@ void create(int *sock){
         }
         
         if(i < 2){
-            sendPacket(fd, STATUS_AUTHFAIL, NULL);
+            sendPacket(ssl, STATUS_AUTHFAIL, NULL);
             printf("Username/PW combinatie fout. Aantal pogingen: %i\n",i+1);
         } else {
-            sendPacket(fd, STATUS_CNA, NULL);
-            stopClient(fd);
+            sendPacket(ssl, STATUS_CNA, NULL);
+            stopClient(ssl);
             return;
         }
     }
     
-    bzero(buffer, BUFFERSIZE);
+    bzero(buffer, BUFFERCMD);
     
     //End of Login
     printf("user %s has logged in, awaiting orders.\n", clients[fd-4].username);
     //loop forever until client stops
     for ( ;; ){
         //receive info
-        if ((rec = recv(fd, buffer, BUFFERSIZE,0)) < 0){
+        if ((rec = SSL_read(ssl, buffer, BUFFERCMD)) < 0){
             perror("recv");
             printf("Client error! Stopping... \n");
             break;
@@ -229,14 +302,14 @@ void create(int *sock){
             break;
         } else {
             //good
-            if ((result = switchResult(&fd, buffer)) == STUK){
+            if ((result = switchResult(ssl, buffer)) == STUK){
                 //error
                 break;
             }
         }
-        bzero(buffer, BUFFERSIZE);
+        bzero(buffer, BUFFERCMD);
     }
-    stopClient(fd);
+    stopClient(ssl);
 }
 
 /**
@@ -258,16 +331,19 @@ void SIGexit(int sig){
 
 void quit(){
     puts("\nStopping server.....");
+    SSL_CTX_free(CTX);
     close(sock);
     closeDB();
     exit(MOOI);
 }
 
-void stopClient(int fd){
+void stopClient(SSL* ssl){
+    int fd = SSL_get_fd(ssl);
     printf("Client stopped\n");
     bzero(&clients[fd-4], sizeof(clients[fd-4]));
+    SSL_shutdown(ssl);
     close(fd);
-    cur_cli--;
+    sem_post(&client_wait);
 }
 
 /**
@@ -358,9 +434,9 @@ int clientinfo(char **args, int amount){
             printClientInfo(clients[i], i);
         }
     }
-    for (i=0; i<MAX_CLI; i++){\
-        if (clients[i].username != NULL){
-            printf("hmm22\n");
+    
+    for (i=0; i<MAX_CLI; i++){
+        if (clients[i].client.sin_port != 0){
             j = 1;
             printClientInfo(clients[i], i+1);
         }
@@ -452,18 +528,15 @@ int printTable(char **args, int amount){
  */
 
 int ReceiveCredentials(char* username, char* password){
-    char *saltedPassword = malloc(SHA256_DIGEST_LENGTH*2+1);
+    char saltedPassword[SHA256_DIGEST_LENGTH*2];
     char *salt = getSalt(username);
     
     hashPassword(password, salt, saltedPassword);
     
-    int ret = MOOI;
-    if(strcmp(saltedPassword, getPassWord(username)) != 0){
-        ret = STUK;
-    }
     
-    free(salt);
-    free(saltedPassword);
-    return ret;
+    if(strcmp(saltedPassword, getPassWord(username)) != 0){
+        return STUK;
+    }
+    return MOOI;
 }
 

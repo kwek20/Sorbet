@@ -28,6 +28,30 @@ int OpenBestand(char* bestandsnaam){
     return MOOI;
 }
 
+int deleteFile(SSL* ssl, char* bestandsnaam, char* fileOrDir){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
+    char fullPath[500];
+    if(getcwd(fullPath, sizeof(fullPath)) == NULL){
+        perror("Getcwd error");
+        return STUK;
+    }
+    strcat(fullPath, "/");
+    strcat(fullPath, savedir);
+    
+    printf("Pad is nu: %s \n", fullPath);
+    
+    if(strcmp(fileOrDir, "1") == 0){
+        // Het is een dir!
+        puts("Directory");
+        if(rmdir(fullPath) < 0){perror("Remove file error"); return STUK;}
+    } else if(strcmp(fileOrDir, "2") == 0){
+        // Het is een file!
+        puts("File");
+        if(unlink(fullPath) < 0){perror("Remove file error"); return STUK;}
+    }
+    return MOOI;
+}
+
 /*
  * Functie controleerd of bestand bestaat
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
@@ -38,7 +62,7 @@ int BestaatDeFile(char* bestandsnaam){
         // Bestand bestaat niet op schijf van client
         return STUK;
     } else {
-        // Bestand bestaat op schijf van client
+        // Bestand bestaat op schijf van cliteamsorbet-pfc-4c104671e945ent
         return MOOI;
     }
 }
@@ -49,12 +73,18 @@ int BestaatDeFile(char* bestandsnaam){
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
  * @return 0 if succesvol. -1 if failed.
  */
-int FileTransferSend(int* sockfd, char* bestandsnaam){
-    char* savedir = fixServerBestand(sockfd, bestandsnaam);
+int FileTransferSend(SSL* ssl, char* bestandsnaam){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
     int readCounter = 0;
-    if (waitForOk(*sockfd) != MOOI){
+    
+    struct timeval tv;
+    time_t starttime, endtime, time;
+    gettimeofday(&tv,NULL);
+    starttime = tv.tv_sec;
+    
+    if (waitForOk(ssl) != MOOI){
         printf("FileTransferSend: WaitForOK != Mooi\n");
         return STUK;
     }
@@ -69,27 +99,16 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
      * Herhaal tot bestand compleet ingelezen is.
      */
     while((readCounter = read(bestandfd, buffer, BUFFERSIZE)) > 0){
-        if((send(*sockfd, &readCounter, sizeof(readCounter), 0)) < 0) {
+        if((SSL_write(ssl, &readCounter, sizeof(readCounter))) < 0) {
             perror("FileTransferSend (While): Send readCounter error");
             return STUK;
         }        
-        
-        if (IS_CLIENT == MOOI){
-//            printf("read: %i\n", readCounter+1);
-//            char tempbuf[readCounter+1];
-//            strcpy(tempbuf, buffer);
-//                
-//            bzero(buffer, BUFFERSIZE);
-            buffer = aes_encrypt((unsigned char *)buffer, &readCounter);
-            //free(tempbuf);
-        }
-        
-        if((send(*sockfd, buffer, readCounter, 0)) < 0) {
+        if((SSL_write(ssl, buffer, readCounter)) < 0) {
             perror("FileTransferSend (While): Send file error");
             return STUK;
         }
         
-        if (waitForOk(*sockfd) == STUK){
+        if (waitForOk(ssl) == STUK){
             printf("FileTransferSend (While): WaitForOK != Mooi\n");
             break;
         }
@@ -103,10 +122,10 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     /*
      * Bestand klaar met versturen. Geef dit aan aan server doormiddel van 101:EOF
      */
-    if (sendPacket(*sockfd, STATUS_EOF, NULL) == STUK){
+    if (sendPacket(ssl, STATUS_EOF, NULL) == STUK){
         return STUK;
     }
-    if (waitForOk(*sockfd) == MOOI){
+    if (waitForOk(ssl) == MOOI && DEBUG == 1){
         printf("EOF verstuurd en ok ontvangen.\n");
     }
     if(buffer){
@@ -117,6 +136,15 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
     if(savedir){;
         savedir = NULL;
     }
+    
+    if(DEBUG >= 1){
+        gettimeofday(&tv,NULL);
+        endtime = tv.tv_sec;
+        time = endtime - starttime;
+        if(time < 1){time+=1;};
+        printf("Time: %u second(s)\n", (unsigned int) time);
+    }
+    
     close(bestandfd);
     return MOOI;
 }
@@ -128,8 +156,8 @@ int FileTransferSend(int* sockfd, char* bestandsnaam){
  * @param time de tijd die het nieuwe bestand moet krijgen als modify datum
  * @return 0 if succesvol. -1 if failed.
  */
-int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
-    char* savedir = fixServerBestand(sockfd, bestandsnaam);
+int FileTransferReceive(SSL* ssl, char* bestandsnaam, int time){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
     char* filePath = malloc(sizeof(savedir) + 200);
     char *buffer = malloc(BUFFERSIZE);
     bzero(buffer, BUFFERSIZE);
@@ -140,7 +168,7 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
     
     file = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (file < 0){
-        //file doesnt exist, lets create the folder shant we?
+        //File doesn't exist, lets create the folder shall we?
         char **path = malloc(sizeof(int)*25);
         bzero(path, strlen(savedir));
         puts(savedir);
@@ -168,44 +196,31 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
             return STUK;
         }
     }
-    sendPacket(*sockfd, STATUS_OK, NULL);
+    sendPacket(ssl, STATUS_OK, NULL);
     for ( ;; ){
         if (recvCounter == 0) {
-            if ((recv(*sockfd, &recvCounter, sizeof(recvCounter), 0)) < 0){
+            if ((SSL_read(ssl, &recvCounter, sizeof(recvCounter))) < 0){
                 return STUK;
             }
-            printf("recvCounter: %i\n", recvCounter);
-                if(switchResult(sockfd, (char*)&recvCounter) == STATUS_EOF){
-                    //printf("Stopping file transfer!\n");
-                    sendPacket(*sockfd, STATUS_OK, NULL);
+                if(switchResult(ssl, (char*)&recvCounter) == STATUS_EOF){
+                    sendPacket(ssl, STATUS_OK, NULL);
                     break;
                 }
             
         }
-        if ((rec = recv(*sockfd, buffer, BUFFERSIZE,0)) < 0){
+        if ((rec = SSL_read(ssl, buffer, BUFFERSIZE)) < 0){
             return STUK;
         } else if (rec == 0){
             return MOOI;
         } else {
             recvCounter -= rec;
             if (recvCounter <= 0) {
-                sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
+                sendPacket(ssl, STATUS_OK, toString(rec), NULL);
                 recvCounter = 0;
             }
-            //ack that we received data
-            //sendPacket(*sockfd, STATUS_OK, toString(rec), NULL);
-            //save it all
-            if (IS_CLIENT == MOOI){
-                 char* tempbuf = ( char *)malloc(rec);
-                strcpy(tempbuf, buffer);
-                
-                buffer = aes_decrypt((unsigned char *)tempbuf, &rec);
-                free(tempbuf);
-            }
-            
+            //Save files
             write(file, buffer, rec);
-            
-            //clear received data
+            //Clear buffer
             bzero(buffer, BUFFERSIZE);
         }
     }
@@ -230,18 +245,17 @@ int FileTransferReceive(int* sockfd, char* bestandsnaam, int time){
  * @param timeleft de modify datum van het bestand van de client
  * @return 0 if succesvol. -1 if failed. 
  */
-int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
+int ModifyCheckServer(SSL* ssl, char *bestandsnaam, char* timeleft){
     int file, time = atoi(timeleft);
-    printf("total: %i, best: %i\n", (int)((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam)), (int)strlen(bestandsnaam));
-    int size = (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam)+10;
-    char *buffer = malloc(size);
-    bzero(buffer, size);
+    
+    char *buffer = malloc((sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
+    bzero(buffer, (sizeof(int)*2)+(sizeof(char)*2)+strlen(bestandsnaam));
     strcpy(buffer, "");
     
-    char *savedir = fixServerBestand(sockfd, bestandsnaam);
+    char *savedir = fixServerBestand(ssl, bestandsnaam);
     
     if ((file = open(savedir, O_RDONLY, 0666)) < 0){
-        sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
+        sendPacket(ssl, STATUS_OLD, bestandsnaam, NULL);
         
         sprintf(buffer, "%i", STATUS_NEW);
         strcat(buffer, ":");
@@ -252,8 +266,7 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
         int owntime;
         if ((owntime = modifiedTime(savedir)) < time){
             //own file older
-            sendPacket(*sockfd, STATUS_OLD, bestandsnaam, NULL);
-            //sendPacket(*sockfd, STATUS_NEW, NULL);
+            sendPacket(ssl, STATUS_OLD, bestandsnaam, NULL);
 
             sprintf(buffer, "%i", STATUS_NEW);
             strcat(buffer, ":");
@@ -262,22 +275,21 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
             strcat(buffer, toString(time));
         } else if (owntime > time){
             //own file newer  
-            sendPacket(*sockfd, STATUS_NEW, bestandsnaam, toString(owntime), NULL);
+            sendPacket(ssl, STATUS_NEW, bestandsnaam, toString(owntime), NULL);
 
             sprintf(buffer, "%i", STATUS_OLD);
             strcat(buffer, ":");
             strcat(buffer, bestandsnaam);
         } else {
             //same
-            sendPacket(*sockfd, STATUS_SAME, NULL);
+            sendPacket(ssl, STATUS_SAME, NULL);
             return MOOI;
         }
     }
-    if (file > -1) close(file);
-    
+    close(file);
     int ret = STUK;
-    if (waitForOk(*sockfd) == MOOI){
-        ret = switchResult(sockfd, buffer);
+    if (waitForOk(ssl) == MOOI){
+        ret = switchResult(ssl, buffer);
     } 
     
     if(buffer){
@@ -297,16 +309,18 @@ int ModifyCheckServer(int* sockfd, char *bestandsnaam, char* timeleft){
  * @param bestandsnaam bestandsnaam van bestand dat gecontroleerd moet worden
  * @return 0 if succesvol. -1 if failed.
  */
-int ModifyCheckFile(int* sockfd, char* bestandsnaam){
+int ModifyCheckFile(SSL* ssl, char* bestandsnaam){
     char *path = malloc(strlen(bestandsnaam) + 1);
     struct stat bestandEigenschappen;
     bzero(path, strlen(bestandsnaam));
     char* buffer = malloc(BUFFERSIZE);
     char statusCode[4], seconden[40];
     int readCounter = 0;
+    int sockfd = SSL_get_fd(ssl);	
+
     
     if (IS_CLIENT == STUK){
-        int len = strlen(clients[*sockfd-4].username) + strlen("/userfolders/");
+        int len = strlen(clients[sockfd-4].username) + strlen("/userfolders/");
         path = bestandsnaam + len;
     } else {
         strcpy(path, bestandsnaam);
@@ -318,16 +332,16 @@ int ModifyCheckFile(int* sockfd, char* bestandsnaam){
     sprintf(seconden, "%i", (int) bestandEigenschappen.st_mtime);
     sprintf(statusCode, "%d", STATUS_MODCHK);
  
-    sendPacket(*sockfd, STATUS_MODCHK, path, seconden, NULL);
+    sendPacket(ssl, STATUS_MODCHK, path, seconden, NULL);
     
     // Wacht op antwoord modifycheck van server
-    if((readCounter = recv(*sockfd, buffer, BUFFERSIZE, 0)) < 0) {
+    if((readCounter = SSL_read(ssl, buffer, BUFFERSIZE)) < 0) {
         perror("Receive modififycheck result error");
         return STUK;
     }
-    sendPacket(*sockfd, STATUS_OK, NULL);
+    sendPacket(ssl, STATUS_OK, NULL);
     
-    readCounter = switchResult(sockfd, buffer);
+    readCounter = switchResult(ssl, buffer);
     
     free(buffer);      
     
@@ -335,8 +349,8 @@ int ModifyCheckFile(int* sockfd, char* bestandsnaam){
 }
 
 
-int loopOverFiles(int* sockfd, char *path){
-    char* savedir = fixServerBestand(sockfd, path);
+int loopOverFiles(SSL* ssl, char *path){
+    char* savedir = fixServerBestand(ssl, path);
     FTS *ftsp;
     FTSENT *p, *chp;
     
@@ -362,15 +376,13 @@ int loopOverFiles(int* sockfd, char *path){
                 
         switch (p->fts_info) {
             case FTS_D:
-                //directory
+                //Directory
                 printf("-- Searching in directory: %s\n", p->fts_path);
-                //sendPacket(*sockfd, STATUS_MKDIR, p->fts_path, NULL);
-                //waitForOk(*sockfd);
                 break;
             case FTS_F:
-                //file
+                //File
                 printf("-- Synchronising file: %s\n", p->fts_path);
-                if(ModifyCheckFile(sockfd, p->fts_path) < 0){
+                if(ModifyCheckFile(ssl, p->fts_path) < 0){
                     printf("-- Synchronising of file: %s failed\n", p->fts_path);
                     continue;
                 }
@@ -389,8 +401,8 @@ int loopOverFiles(int* sockfd, char *path){
     return MOOI;
 }
 
-int CreateFolder(int* sockfd, char* bestandsnaam){
-    char* savedir = fixServerBestand(sockfd, bestandsnaam);
+int CreateFolder(SSL* ssl, char* bestandsnaam){
+    char* savedir = fixServerBestand(ssl, bestandsnaam);
     
     char **path = malloc(strlen(savedir) + 100);
     bzero(path, strlen(savedir) + 100);
@@ -415,7 +427,7 @@ int CreateFolder(int* sockfd, char* bestandsnaam){
         *path = NULL;
     }
 
-    sendPacket(*sockfd, STATUS_OK, NULL);
+    sendPacket(ssl, STATUS_OK, NULL);
     free(savedir);
     return MOOI;
 }
@@ -426,15 +438,17 @@ int CreateFolder(int* sockfd, char* bestandsnaam){
  * @param bestandsnaam
  * @return 
  */
-char* fixServerBestand(int* sockfd, char* bestandsnaam){
+char* fixServerBestand(SSL* ssl, char* bestandsnaam){
     if (IS_CLIENT == MOOI) return bestandsnaam;
-    //printf("/userfolders: %i, bestandsnaam: %i, username: %i", (int)strlen("/userfolders/ "), (int)strlen(bestandsnaam), (int)strlen(clients[*sockfd-4].username));
-    char* savedir = malloc(strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username));
-    bzero(savedir, (strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[*sockfd-4].username)));
+
+    int sockfd = SSL_get_fd(ssl);
+    
+    char* savedir = malloc(strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[sockfd-4].username));
+    bzero(savedir, (strlen("/userfolders/ ") + strlen(bestandsnaam) + strlen(clients[sockfd-4].username)));
     strcpy(savedir, "");
     
     strcpy(savedir, "userfolders/");
-    strcat(savedir, clients[*sockfd-4].username);
+    strcat(savedir, clients[sockfd-4].username);
     strcat(savedir, "/");
     
     strcat(savedir, bestandsnaam);
@@ -442,31 +456,49 @@ char* fixServerBestand(int* sockfd, char* bestandsnaam){
     return savedir;
 }
 
-int sendPacket(int fd, int packet, ...){
+int sendPacket(SSL* ssl, int packet, ...){
     char *info = malloc(BUFFERSIZE);
     bzero(info, BUFFERSIZE);
+    strcpy(info, "");
+    char *p = malloc(BUFFERSIZE);
+    bzero(p, BUFFERSIZE);
     
-    char *p = malloc(200);
-    bzero(p, 200);
-    
-    va_list ap;
     sprintf(p, "%i", packet);   
     
+    va_list ap;
+    char* i;
+    
     va_start(ap, packet);
-    for (; p != NULL; p = va_arg(ap, char *)){
+    
+    for (i = p; i != NULL; i = va_arg(ap, char *)){
+        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+            i[strlen(i)-1] = '\0';
+        }    
+        if(((unsigned char)i[strlen(i)-2]) == 9 || ((unsigned char)i[strlen(i)-2]) == 16){
+            i[strlen(i)-2] = '\0';
+        }   
+        if(((unsigned char)i[strlen(i)-1]) == 9 || ((unsigned char)i[strlen(i)-1]) == 16){
+            i[strlen(i)-1] = '\0';
+        }
+        sprintf(p, "%s", i);
         strcat(info, p);
         strcat(info, ":");
-        bzero(p, strlen(p));
+        bzero(p, BUFFERSIZE);
+
     }
     va_end(ap);
+    
     info[strlen(info)-1] = '\0';
+     
     int bytes;
     
-    if((bytes=send(fd, info, strlen(info),0)) < 0){
+    if((bytes=SSL_write(ssl, info, strlen(info))) < 0){
         perror("send");
         return STUK;
     }
-    printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, (int)strlen(info));
+    if(DEBUG >= 2){
+        printf("Send packet: %i, data: \"%s\"(bytes: %i)\n", packet, info, (int)strlen(info));
+    }
     free(info);
     free(p);
     
@@ -479,7 +511,7 @@ int sendPacket(int fd, int packet, ...){
  * @return de meegegeven integer als string
  */
 char *toString(int number){
-    char *nr = malloc(20);
+    char *nr = malloc(10);
     bzero(nr, 10);
     
     sprintf(nr, "%i", number);
@@ -522,16 +554,16 @@ int modifiedTime(char *bestandsnaam){
  * @param sockfd de socket waarop de functie een ok verwacht
  * @return 0 if succesvol. -1 if failed.
  */
-int waitForOk(int sockfd){
+int waitForOk(SSL* ssl){
     char *buffer = malloc(10);
     bzero(buffer, 10);
-    if((recv(sockfd, buffer, 10, 0)) < 0) {
+    if((SSL_read(ssl, buffer, 10)) < 0) {
         perror("Receive OK error");
         free(buffer);
         return STUK;
     }
     
-    if(switchResult(&sockfd, buffer) != STATUS_OK){
+    if(switchResult(ssl, buffer) != STATUS_OK){
         free(buffer);
         printf("WaitForOK(): SwitchResult != STATUS_OK");
         return STUK;
@@ -569,7 +601,6 @@ int hashPassword(char *password, char *salt, char to[]) {
     // Initialiseer struct
     SHA256_Init(&ctx);
     
-    printf("password: %s\n", password);
     // Plaats wachtwoord in struct 
     SHA256_Update(&ctx, password,  strlen(password));
 
@@ -666,5 +697,17 @@ void printStart(void){
     puts("|             \\  /          |");
     puts("|            __)(__         |");
     puts("|           '------`        |");
-    puts("-----------------------------\n");
+    puts("-----------------------------");
+    
+    if(DEBUG >= 1){
+        puts(" _____  ______ ____  _    _  _____ ");
+        puts("|  __ \\|  ____|  _ \\| |  | |/ ____|");
+        puts("| |  | | |__  | |_) | |  | | |  __ ");
+        puts("| |  | |  __| |  _ <| |  | | | |_ |");
+        puts("| |__| | |____| |_) | |__| | |__| |");
+        puts("|_____/|______|____/ \\____/ \\_____|");
+        printf("Debug mode: %i\n\n", DEBUG);
+    } else {
+        puts("");
+    }
 }

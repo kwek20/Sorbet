@@ -13,21 +13,19 @@
 
 #include "pfc.h"
 
-int switchResult(int* sockfd, char* buffer){
-    printf("raw packet data: [%s], length: %i\n", buffer, strlen(buffer));
+int switchResult(SSL* ssl, char* buffer){
+    if(DEBUG >= 2){
+        printf("[switchResult]: Raw packet data: [%s], length: %i\n", buffer, (int)strlen(buffer));
+    }
     char** to = malloc(10*sizeof(int));
-    //int bytes = strlen(buffer), ret = 0;
     int ret = 0;
-    int statusCode = 0;
-    transform(buffer, to);
-    if(to[0] == NULL){printf("to[0] is NULL\n"); return -1;}
+    int statusCode = 0, aantal = transform(buffer, to);
+    if(to[0] == NULL){return STUK;}
     
     if((statusCode = atoi(to[0])) < 100){
-        //printf("error with statusCode (%i)\n", statusCode);
         return STUK;
     }
-    //printf("Received packet: %i(%i) data: \n", statusCode, bytes);
-    //printArray(aantal, to);
+    if(DEBUG >= 2){printArray(aantal, to);};
     bzero(buffer, strlen(buffer));
     
     switch(statusCode) {
@@ -37,13 +35,15 @@ int switchResult(int* sockfd, char* buffer){
         case STATUS_AUTHOK:   ret = STATUS_AUTHOK; break;
         case STATUS_AUTHFAIL: ret = STATUS_AUTHFAIL; break;
         
-        case STATUS_MKDIR:    ret = CreateFolder(sockfd, to[1]); break;
-        case STATUS_CR:       ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_MODCHK:   ret = ModifyCheckServer(sockfd, to[1], to[2]); break; //server
-        case STATUS_OLD:      ret = FileTransferSend(sockfd, to[1]); break;
-        case STATUS_NEW:      ret = FileTransferReceive(sockfd, to[1], atoi(to[2])); break;
-        case STATUS_CNA:      ret = ConnectRefused(sockfd); break;
-        case STATUS_SYNC:     ret = loopOverFiles(sockfd, to[1]);
+        case STATUS_MKDIR:    ret = CreateFolder(ssl, to[1]); break;
+        case STATUS_CR:       ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_MODCHK:   ret = ModifyCheckServer(ssl, to[1], to[2]); break; //server
+        case STATUS_OLD:      ret = FileTransferSend(ssl, to[1]); break;
+        case STATUS_NEW:      ret = FileTransferReceive(ssl, to[1], atoi(to[2])); break;
+        case STATUS_CNA:      ret = ConnectRefused(ssl); break;
+        case STATUS_DELETE:   ret = deleteFile(ssl, to[1], to[2]); break;
+        case STATUS_RENAME:   ret = renameFile(ssl, to[1], to[2]); break;
+        case STATUS_SYNC:     ret = loopOverFiles(ssl, to[1]);     
         default:              ret = STUK;
     }
     
@@ -54,9 +54,9 @@ int switchResult(int* sockfd, char* buffer){
     return ret;
 }
 
-int ConnectRefused(int* sockfd){
+int ConnectRefused(SSL* ssl){
     printf("You have been disconnected\n");
-    close(*sockfd);
+    close(SSL_get_fd(ssl));
     return STUK;
 }
 
@@ -78,8 +78,8 @@ int transform(char *text, char** to){
  * @return the amount of splits done (amount of values)
  */
 int transformWith(char *text, char** to, char *delimit){
-    char *temp = malloc(BUFFERSIZE);
-    bzero(temp, BUFFERSIZE);
+    char *temp = malloc(BUFFERCMD);
+    bzero(temp, BUFFERCMD);
     
     temp = strtok(text, delimit);
     
