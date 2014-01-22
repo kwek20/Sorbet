@@ -47,6 +47,10 @@ int renameRemoteFile(char** argv, char oldFileName[], char newFileName[], char* 
 int createRemoteFolder(char** argv, char foldernaam[]);
 int createRemoteFile(char** argv, char bestandsnaam[]);
 
+int initEncrypt();
+char* getRandom(int size);
+char* newPwd(int pwdSize);
+
 // SSL Prototypes
 SSL_CTX* initCTX();
 SSL* initSSL(int sockfd);
@@ -60,7 +64,9 @@ int main(int argc, char** argv) {
     struct hostent *hostname;
     struct in_addr **ipadres;
     char* ip;
- 
+    
+    IS_CLIENT = MOOI;
+
     pthread_t folderDaemon;
     pthread_t syncDaemon;
 
@@ -69,7 +75,9 @@ int main(int argc, char** argv) {
     ip = inet_ntoa(*ipadres[0]);
 
     argv[2] = ip;
-
+    
+    
+    initEncrypt();
     //monitorD(argv);
     
     // Maak een thread voor het scannen van folders
@@ -83,6 +91,72 @@ int main(int argc, char** argv) {
     //pfcClient(argv);
     
     return (EXIT_SUCCESS);
+}
+
+int initEncrypt(){
+    int readSize=0, keyfd=0, pwdSize = 8;
+    char *buffer = malloc(pwdSize+1);
+    char *pwd = malloc(pwdSize+1);
+    strcpy(pwd, "");
+    strcpy(buffer, "");
+    if((keyfd = open("secret.key",O_RDWR)) == STUK){
+        pwd = newPwd(pwdSize);
+    } else {
+        readSize = read(keyfd, buffer, pwdSize);
+        if (readSize == 8){
+            memcpy(pwd, buffer, 8);
+        } else {
+            pwd = newPwd(pwdSize);
+        }
+        close(keyfd);
+    }              
+    unsigned int pwd_len = strlen(pwd);
+    if(aes_init((unsigned char*)pwd,pwd_len,(unsigned char*) FIXEDSALT)){                /* Generating Key and IV and initializing the EVP struct */
+        perror("\n Error, Cant initialize key and IV");
+        return STUK;
+    }
+    free(pwd);
+    free(buffer);
+    return MOOI;
+}
+
+char* getRandom(int size){
+    char *pwd = malloc(size+1);
+    strcpy(pwd, "");
+    
+    char *buff = malloc(size+1);
+    int currentSize = 0, randomfd, readSize;
+    
+    while (currentSize < size){
+        if((randomfd = open("/dev/urandom", O_RDONLY)) == -1){
+            perror("\n Error,Opening /dev/random::");
+            return pwd;
+        } else {
+            if((readSize = read(randomfd,buff,size)) == -1) {
+                perror("\n Error,reading from /dev/random::");
+                return pwd;
+            }
+            currentSize += readSize;
+            strcat(pwd, buff);
+            close(randomfd);
+        }
+    }
+    return pwd;    
+}
+
+char* newPwd(int pwdSize){
+    int keyfd;
+    char* pwd = malloc(pwdSize+1);
+    
+    if((keyfd = open("secret.key",O_RDWR|O_CREAT, 0777)) == STUK){
+        perror("\n Could not create secret.key");
+        return "";
+    } else {
+        pwd = getRandom(pwdSize);
+        keyfd = write(keyfd, pwd, pwdSize);
+        close(keyfd);
+    }
+    return pwd;
 }
 
 void syncFunction(char** argv){
@@ -627,7 +701,7 @@ int loopOverFilesS(char **path, SSL* ssl){
                 break;
         }
     }
-    
+    puts("start in loop file");
     fts_close(ftsp);
     sendPacket(ssl, STATUS_SYNC, path[0], NULL);
     char* buffer = malloc(BUFFERSIZE);

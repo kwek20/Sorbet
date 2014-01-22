@@ -36,7 +36,7 @@
 #define BUFFERSIZE 64000
 #define BUFFERCMD 1024
 #define NETWERKPOORT 2200
-#define MAX_CLI 100
+#define MAX_CLI 10
 //Debug mode 0 off, 1 speedtest, 2 error debug
 #define DEBUG 0
 //Defines return values

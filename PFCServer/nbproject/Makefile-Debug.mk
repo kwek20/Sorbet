@@ -34,11 +34,7 @@ include Makefile
 OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
-OBJECTFILES= \
-	${OBJECTDIR}/databasetools.o \
-	${OBJECTDIR}/pfcserver.o \
-	${OBJECTDIR}/switch.o \
-	${OBJECTDIR}/utils.o
+OBJECTFILES=
 
 
 # C Compiler Flags
@@ -65,25 +61,25 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcserver: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcserver ${OBJECTFILES} ${LDLIBSOPTIONS}
 
-${OBJECTDIR}/databasetools.o: databasetools.c 
+${OBJECTDIR}/databasetools.c.gch: databasetools.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/databasetools.o databasetools.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o "$@" databasetools.c
 
-${OBJECTDIR}/pfcserver.o: pfcserver.c 
+${OBJECTDIR}/pfcserver.c.gch: pfcserver.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/pfcserver.o pfcserver.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o "$@" pfcserver.c
 
-${OBJECTDIR}/switch.o: switch.c 
+${OBJECTDIR}/switch.c.gch: switch.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/switch.o switch.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o "$@" switch.c
 
-${OBJECTDIR}/utils.o: utils.c 
+${OBJECTDIR}/utils.c.gch: utils.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/utils.o utils.c
+	$(COMPILE.c) -g -Wall -MMD -MP -MF "$@.d" -o "$@" utils.c
 
 # Subprojects
 .build-subprojects:

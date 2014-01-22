@@ -34,9 +34,7 @@ include Makefile
 OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
-OBJECTFILES= \
-	${OBJECTDIR}/pfcclient.o \
-	${OBJECTDIR}/utils.o
+OBJECTFILES=
 
 
 # C Compiler Flags
@@ -63,15 +61,15 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcclient: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/pfcclient ${OBJECTFILES} ${LDLIBSOPTIONS}
 
-${OBJECTDIR}/pfcclient.o: pfcclient.c 
+${OBJECTDIR}/pfcclient.c.gch: pfcclient.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/pfcclient.o pfcclient.c
+	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o "$@" pfcclient.c
 
-${OBJECTDIR}/utils.o: utils.c 
+${OBJECTDIR}/utils.c.gch: utils.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/utils.o utils.c
+	$(COMPILE.c) -O2 -MMD -MP -MF "$@.d" -o "$@" utils.c
 
 # Subprojects
 .build-subprojects:
